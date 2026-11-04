@@ -1,0 +1,16 @@
+/* Tambahan untuk versi React: tombol bahasa, pesan error form. Memakai token dari home.css. */
+@layer sections {
+  #navigation .nav__end { margin-left: auto; display: flex; align-items: center; gap: 18px; }
+  #navigation .nav__end .nav__cta { margin-left: 0; }
+  @media (max-width: 640px) { #navigation .nav__end { display: none; } }
+  #navigation .menu .menu__foot { gap: 14px; }
+  #contact .ct__error { padding: 10px 12px; border: 1px solid var(--color-4); color: var(--color-4); font-size: 15px; }
+  #contact .m-btn[disabled] { opacity: .7; cursor: progress; }
+}
+
+.lang { display: inline-flex; border: 1px solid currentColor; }
+.lang button { min-width: 40px; min-height: 32px; padding: 0 8px; border: 0; background: transparent; color: inherit; font: 500 13px/1 var(--font-1); letter-spacing: 0.06em; cursor: pointer; }
+.lang button[aria-pressed='true'] { background: var(--color-2); color: var(--color-1); }
+.lang--dark button[aria-pressed='true'] { background: var(--color-1); color: var(--color-2); }
+.lang button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+@media (pointer: coarse) { .lang button { min-height: 44px; min-width: 44px; } }

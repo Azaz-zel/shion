@@ -1,0 +1,65 @@
+/* Undangan tamu: satu kolom sempit seperti kartu undangan, nyaman dibuka dari WhatsApp di HP. */
+.inv { min-height: 100svh; max-width: 520px; margin: 0 auto; background: var(--color-1); color: var(--color-2); font-family: var(--font-1); font-size: 16px; line-height: 1.65; }
+.inv--state { display: flex; flex-direction: column; }
+.inv__bar { position: sticky; top: 0; z-index: 5; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); background: var(--color-2); color: var(--color-1); }
+.inv__brand { font-family: var(--font-2); font-size: 17px; letter-spacing: 0.02em; }
+.inv__brand span { font-family: var(--font-3); color: var(--color-3); margin-left: 4px; }
+
+.inv__cover { display: grid; justify-items: center; gap: 6px; padding: 48px 24px 56px; background: var(--color-2); color: var(--color-1); text-align: center; }
+.inv__dear { margin: 0; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; opacity: .8; }
+.inv__guest { margin: 0 0 28px; font-family: var(--font-2); font-size: 22px; }
+.inv__names { display: grid; gap: 2px; margin: 0; font-family: var(--font-1); font-weight: 900; font-stretch: 125%; text-transform: uppercase; font-size: clamp(44px, 14vw, 68px); line-height: .92; letter-spacing: -0.02em; }
+.inv__amp { font-family: var(--font-2); font-weight: 400; font-stretch: 100%; font-size: .5em; color: var(--color-3); line-height: 1.3; }
+.inv__kanji { margin: 18px 0 10px; font-family: var(--font-3); font-size: 56px; line-height: 1; color: var(--color-3); }
+.inv__date { margin: 0; font-family: var(--font-2); font-size: 18px; text-transform: uppercase; }
+.inv__count { margin: 0; font-size: 14px; opacity: .8; }
+
+.inv__block { padding: 44px 24px 0; }
+.inv__block h2 { margin: 0 0 16px; font-family: var(--font-2); font-weight: 400; font-size: 28px; line-height: 1.1; text-transform: uppercase; text-wrap: balance; }
+.inv__block p { margin: 0 0 12px; }
+.inv__lead { font-family: var(--font-2); font-size: 21px; line-height: 1.35; }
+.inv__sched { margin: 0; padding: 0; list-style: none; border-top: 1px solid currentColor; }
+.inv__sched li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid color-mix(in oklab, var(--color-2) 25%, transparent); }
+.inv__sched li span:first-child { font-family: var(--font-2); font-variant-numeric: tabular-nums; }
+.inv__facts { display: grid; gap: 16px; margin: 0 0 16px; }
+.inv__facts dt { font-size: 13px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; opacity: .8; }
+.inv__facts dd { margin: 0; }
+.inv__small { font-size: 14px; opacity: .8; }
+
+.inv__rsvp { padding-bottom: 56px; }
+.inv__rsvp form { display: grid; gap: 10px; padding-top: 28px; border-top: 1px solid currentColor; }
+.inv__label { margin: 12px 0 0; font-size: 13px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
+.inv__choice { display: grid; gap: 8px; }
+.inv__choice label, .inv__diets label { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 16px; border: 1px solid color-mix(in oklab, var(--color-2) 45%, transparent); background: #fbf6f1; cursor: pointer; }
+.inv__choice label.is-on, .inv__diets label.is-on { background: var(--color-2); color: var(--color-1); border-color: var(--color-2); }
+.inv__choice input, .inv__diets input { accent-color: var(--color-4); width: 18px; height: 18px; margin: 0; }
+.inv__choice label:has(input:focus-visible), .inv__diets label:has(input:focus-visible) { outline: 2px solid var(--color-4); outline-offset: 2px; }
+.inv__diets { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; border: 0; }
+.inv__diets legend { margin-bottom: 8px; }
+.inv__diets label { min-height: 44px; padding: 0 12px; font-size: 15px; }
+.inv__pax { display: flex; align-items: center; gap: 14px; }
+.inv__pax button { width: 48px; height: 48px; border: 1px solid var(--color-2); background: #fbf6f1; font-size: 22px; cursor: pointer; }
+.inv__pax button:disabled { opacity: .35; cursor: not-allowed; }
+.inv__pax output { min-width: 28px; text-align: center; font-family: var(--font-2); font-size: 28px; }
+.inv__input { width: 100%; min-height: 48px; padding: 10px 12px; border: 1px solid color-mix(in oklab, var(--color-2) 45%, transparent); background: #fbf6f1; font: inherit; color: inherit; box-sizing: border-box; }
+.inv__input:focus-visible { outline: 2px solid var(--color-4); outline-offset: 1px; }
+.inv__consent { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; margin-top: 14px; font-size: 14px; line-height: 1.5; cursor: pointer; }
+.inv__consent input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--color-4); }
+.inv__error { padding: 10px 12px; border: 1px solid var(--color-4); color: var(--color-4); font-size: 15px; }
+.inv__btn { display: inline-flex; justify-content: center; align-items: center; min-height: 52px; padding: 0 22px; border: 0; background: var(--color-2); color: var(--color-1); font: 500 16px var(--font-1); text-decoration: none; cursor: pointer; }
+.inv__btn:disabled { opacity: .7; cursor: progress; }
+.inv__btn--ghost { min-height: 48px; background: transparent; color: var(--color-2); border: 1px solid var(--color-2); font-size: 15px; }
+.inv__rsvp form .inv__btn:not(.inv__btn--ghost) { margin-top: 12px; width: 100%; }
+
+.inv__done { display: grid; justify-items: center; gap: 8px; padding-top: 28px; border-top: 1px solid currentColor; text-align: center; }
+.inv__qr { width: 240px; height: 240px; margin: 12px 0 4px; background: #fff; border: 1px solid color-mix(in oklab, var(--color-2) 30%, transparent); }
+.inv__qr--wait { background: color-mix(in oklab, var(--color-2) 8%, #fff); }
+.inv__qrlabel { font-family: var(--font-2); font-size: 18px; text-transform: uppercase; }
+
+.inv__state { display: grid; gap: 12px; align-content: center; flex: 1; padding: 40px 24px; text-align: center; }
+.inv__state h1 { margin: 0; font-family: var(--font-2); font-weight: 400; font-size: 30px; text-transform: uppercase; }
+.inv__state p { margin: 0; }
+.inv__state .inv__btn { justify-self: center; }
+.inv__foot { padding: 24px; border-top: 1px solid color-mix(in oklab, var(--color-2) 25%, transparent); font-size: 13px; text-align: center; opacity: .8; }
+.inv .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (min-width: 560px) { body:has(.inv) { background: color-mix(in oklab, var(--color-1) 70%, var(--color-2)); } }
