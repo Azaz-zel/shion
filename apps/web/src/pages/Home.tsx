@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import QRCode from 'qrcode';
 import { homeCopy, type HomeCopy } from '../content/home';
 import { brand } from '../config/brand';
 import { api, errorText } from '../lib/api';
@@ -290,6 +291,55 @@ function nextOpenDay(): string {
   return d;
 }
 
+const PRICE: Record<PackageCode, number> = { ume: 750000, take: 1150000, matsu: 1850000 };
+
+/** Layar simulasi QRIS untuk paket dinner. Tidak ada transaksi nyata. */
+function PaymentStep({ t, code, phone, total, onDone }: { t: HomeCopy; code: string; phone: string; total: number; onDone: (msg: string) => void }) {
+  const p = t.contact.pay;
+  const { lang } = useLang();
+  const [deadline] = useState(() => Date.now() + 15 * 60_000);
+  const [now, setNow] = useState(Date.now());
+  const [qr, setQr] = useState('');
+  const [state, setState] = useState({ busy: false, error: '' });
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  useEffect(() => {
+    QRCode.toDataURL(`DEMO-QRIS|${brand.name}|${code}|${total}`, { margin: 1, width: 440, color: { dark: '#2a1a2b', light: '#ffffff' } }).then(setQr).catch(() => setQr(''));
+  }, [code, total]);
+  const left = Math.max(0, deadline - now);
+  const mm = String(Math.floor(left / 60000)).padStart(2, '0');
+  const ss = String(Math.floor((left % 60000) / 1000)).padStart(2, '0');
+  const money = new Intl.NumberFormat(lang === 'id' ? 'id-ID' : 'en-GB', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(total);
+  return (
+    <div className="ct__form ct__pay">
+      <p className="m-text-3 ct__wide">{p.label} · {code}</p>
+      <p className="ct__total ct__wide">{p.total} {money}</p>
+      {left > 0 ? (
+        <>
+          <div className="ct__qrbox">{qr ? <img src={qr} width={220} height={220} alt={p.qrAlt} /> : <span aria-hidden="true" />}</div>
+          <div className="ct__paytext">
+            <p className="m-text">{p.body}</p>
+            <p className="m-text-8">{p.left} <span className="ct__timer" aria-live="off">{mm}:{ss}</span></p>
+            <p className="ct__demo m-text-8">{p.demo}</p>
+            {state.error && <p className="ct__error" role="alert">{state.error}</p>}
+            <button className="m-btn" type="button" disabled={state.busy} onClick={async () => {
+              setState({ busy: true, error: '' });
+              try {
+                await api.simulatePayment(code, phone);
+                onDone(p.done(code));
+              } catch (err) {
+                setState({ busy: false, error: errorText(err) });
+              }
+            }}><span className="m-btn__label">{state.busy ? p.checking : p.paid}</span></button>
+          </div>
+        </>
+      ) : <p className="ct__error ct__wide" role="alert">{p.expired}</p>}
+    </div>
+  );
+}
+
 const TIMES = ['11:30', '12:00', '12:30', '13:00', '13:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00'];
 
 function Contact({ t, preset }: { t: HomeCopy; preset: { value: Preset; n: number } }) {
@@ -305,6 +355,7 @@ function Contact({ t, preset }: { t: HomeCopy; preset: { value: Preset; n: numbe
   const [estimate, setEstimate] = useState(60);
   const [notes, setNotes] = useState('');
   const [state, setState] = useState<{ status: 'idle' | 'sending' | 'done' | 'error'; message: string }>({ status: 'idle', message: '' });
+  const [pay, setPay] = useState<{ code: string; phone: string; total: number } | null>(null);
 
   useEffect(() => setKind(preset.value), [preset]);
   const times = kind === 'matsu' ? ['18:00', '20:30'] : kind === 'take' ? TIMES.filter((x) => x >= '18:00') : TIMES;
@@ -324,7 +375,11 @@ function Contact({ t, preset }: { t: HomeCopy; preset: { value: Preset; n: numbe
           type: kind === 'table' ? 'table' : 'dinner_package', packageCode: kind === 'table' ? null : kind,
           date, time, pax, guestName: name, phone, notes,
         });
-        setState({ status: 'done', message: c.done(code) });
+        if (kind === 'table') setState({ status: 'done', message: c.done(code) });
+        else {
+          setPay({ code, phone: phone.trim(), total: PRICE[kind] * pax });
+          setState({ status: 'idle', message: '' });
+        }
       }
     } catch (err) {
       setState({ status: 'error', message: errorText(err) });
@@ -340,7 +395,9 @@ function Contact({ t, preset }: { t: HomeCopy; preset: { value: Preset; n: numbe
           <p className="m-text-3">{c.label}</p>
           <h2 id="contact-title" className="m-text-2">{c.title}</h2>
         </div>
-        {state.status === 'done' ? (
+        {pay ? (
+          <PaymentStep t={t} code={pay.code} phone={pay.phone} total={pay.total} onDone={(message) => { setPay(null); setState({ status: 'done', message }); }} />
+        ) : state.status === 'done' ? (
           <div className="ct__form" role="status">
             <p className="ct__done m-text">{state.message}</p>
             <button className="m-btn" type="button" onClick={() => setState({ status: 'idle', message: '' })}><span className="m-btn__label">{c.again}</span></button>

@@ -58,7 +58,37 @@ export interface Guest {
   respondedAt: string | null;
   tableNo: string;
   checkedInAt: string | null;
+  checkedInPax: number;
 }
+
+export interface NewGuest {
+  name: string;
+  groupLabel: string;
+  maxPax: number;
+  tableNo: string;
+}
+
+export type GuestPatch = Partial<NewGuest>;
+
+export interface GuestBrief {
+  id: string;
+  name: string;
+  groupLabel: string;
+  maxPax: number;
+  rsvpStatus: RsvpStatus;
+  rsvpPax: number;
+  dietary: DietCode[];
+  dietaryNote: string;
+  tableNo: string;
+  checkedInAt: string | null;
+  checkedInPax: number;
+}
+
+export type CheckInResult =
+  | { status: 'ok'; guest: GuestBrief }
+  | { status: 'already'; guest: GuestBrief }
+  | { status: 'invalid' }
+  | { status: 'other_event' };
 
 /** Yang dilihat tamu di halaman undangan: hanya data acara dan data dirinya sendiri. */
 export interface InvitationView {
@@ -109,6 +139,8 @@ export interface Api {
   createWeddingInquiry(input: NewWeddingInquiry): Promise<{ code: string }>;
   getInvitation(slug: string, token: string): Promise<InvitationView | null>;
   submitRsvp(token: string, input: RsvpInput): Promise<InvitationView>;
+  /** Simulasi pembayaran QRIS paket dinner. Tidak ada uang yang ditarik. */
+  simulatePayment(code: string, phone: string): Promise<void>;
   admin: {
     session(): Promise<AdminUser | null>;
     signIn(email: string, password: string): Promise<AdminUser>;
@@ -118,6 +150,11 @@ export interface Api {
     reservations(): Promise<Reservation[]>;
     setReservationStatus(id: string, status: ReservationStatus): Promise<void>;
     setWeddingStatus(id: string, status: WeddingStatus): Promise<void>;
+    addGuests(weddingId: string, rows: NewGuest[]): Promise<number>;
+    updateGuest(id: string, patch: GuestPatch): Promise<void>;
+    deleteGuest(id: string): Promise<void>;
+    /** Check-in lewat token (scan QR) atau id tamu (cari nama). */
+    checkIn(weddingId: string, by: { token?: string; guestId?: string; pax?: number }): Promise<CheckInResult>;
     /** Memanggil `onChange` setiap kali data tamu, reservasi, atau wedding berubah. Mengembalikan fungsi berhenti. */
     subscribe(onChange: () => void): () => void;
   };

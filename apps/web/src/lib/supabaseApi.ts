@@ -4,6 +4,7 @@ import {
   UserError,
   type AdminUser,
   type Api,
+  type CheckInResult,
   type Guest,
   type InvitationView,
   type Reservation,
@@ -38,7 +39,7 @@ const toGuest = (r: Row): Guest => ({
   maxPax: Number(r.max_pax), token: String(r.token), rsvpStatus: r.rsvp_status as Guest['rsvpStatus'],
   rsvpPax: Number(r.rsvp_pax), dietary: (r.dietary as Guest['dietary']) ?? [], dietaryNote: String(r.dietary_note ?? ''),
   message: String(r.message ?? ''), respondedAt: (r.responded_at as string | null) ?? null, tableNo: String(r.table_no ?? ''),
-  checkedInAt: (r.checked_in_at as string | null) ?? null,
+  checkedInAt: (r.checked_in_at as string | null) ?? null, checkedInPax: Number(r.checked_in_pax ?? 0),
 });
 
 export function makeSupabaseApi(url: string, anonKey: string): Api {
@@ -92,6 +93,11 @@ export function makeSupabaseApi(url: string, anonKey: string): Api {
       return data as InvitationView;
     },
 
+    async simulatePayment(code, phone) {
+      const { error } = await sb.rpc('simulate_payment', { p_code: code, p_phone: phone.trim() });
+      if (error) fail(error);
+    },
+
     admin: {
       session: profile,
       async signIn(email, password) {
@@ -130,6 +136,35 @@ export function makeSupabaseApi(url: string, anonKey: string): Api {
         const { error } = await sb.from('weddings').update({ status }).eq('id', id);
         if (error?.code === '23505') throw new UserError('Sudah ada wedding terkonfirmasi di tanggal dan sesi yang sama.');
         if (error) fail(error);
+      },
+      async addGuests(weddingId, rows) {
+        const { error, count } = await sb.from('guests').insert(
+          rows.map((r) => ({ wedding_id: weddingId, name: r.name.trim(), group_label: r.groupLabel.trim(), max_pax: r.maxPax, table_no: r.tableNo.trim() })),
+          { count: 'exact' },
+        );
+        if (error) fail(error);
+        return count ?? rows.length;
+      },
+      async updateGuest(id, patch) {
+        const row: Record<string, unknown> = {};
+        if (patch.name !== undefined) row.name = patch.name.trim();
+        if (patch.groupLabel !== undefined) row.group_label = patch.groupLabel.trim();
+        if (patch.maxPax !== undefined) row.max_pax = patch.maxPax;
+        if (patch.tableNo !== undefined) row.table_no = patch.tableNo.trim();
+        const { error } = await sb.from('guests').update(row).eq('id', id);
+        if (error?.code === '23514') throw new UserError('Jumlah maksimal tidak boleh lebih kecil dari jumlah yang sudah RSVP.');
+        if (error) fail(error);
+      },
+      async deleteGuest(id) {
+        const { error } = await sb.from('guests').delete().eq('id', id);
+        if (error) fail(error);
+      },
+      async checkIn(weddingId, by) {
+        const { data, error } = await sb.rpc('check_in', {
+          p_wedding: weddingId, p_token: by.token ?? null, p_guest: by.guestId ?? null, p_pax: by.pax ?? null,
+        });
+        if (error) fail(error);
+        return data as CheckInResult;
       },
       subscribe(onChange) {
         const channel = sb

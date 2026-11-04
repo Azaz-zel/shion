@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
 import { formatDate } from '../../i18n/lang';
 import { inviteCopy } from '../../content/invitation';
 import { todayISO } from '../../lib/validation';
 import type { DietCode, Guest, RsvpStatus, Wedding } from '../../lib/types';
 import { copyText, relativeTime, useLive } from './useLive';
+import { GuestRowEdit, GuestTools } from './GuestTools';
 
 type Filter = 'all' | RsvpStatus;
 const FILTERS: Array<[Filter, string]> = [['all', 'Semua'], ['attending', 'Hadir'], ['declined', 'Tidak hadir'], ['pending', 'Belum menjawab']];
@@ -106,6 +107,7 @@ export default function RsvpPage() {
   const guests = useLive(() => (wedding ? api.admin.guests(wedding.id) : Promise.resolve([] as Guest[])), [wedding?.id]);
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
+  const [editing, setEditing] = useState('');
 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -169,31 +171,37 @@ export default function RsvpPage() {
                   <input id="ad-search" type="search" placeholder="Cari nama atau grup" value={query} onChange={(e) => setQuery(e.target.value)} />
                 </label>
               </div>
+              <GuestTools weddingId={wedding.id} />
               {list.length === 0 ? (
-                <p className="ad-empty">{all.length === 0 ? 'Belum ada tamu untuk wedding ini. Tambahkan daftar tamu lewat impor CSV (segera hadir).' : 'Tidak ada tamu yang cocok dengan saringan ini.'}</p>
+                <p className="ad-empty">{all.length === 0 ? 'Belum ada tamu untuk wedding ini. Tambahkan satu per satu atau impor dari CSV.' : 'Tidak ada tamu yang cocok dengan saringan ini.'}</p>
               ) : (
                 <div className="ad-tablewrap">
                   <table className="ad-table">
                     <thead>
-                      <tr><th scope="col">Tamu</th><th scope="col">Jawaban</th><th scope="col">Orang</th><th scope="col">Pantangan</th><th scope="col">Ucapan</th><th scope="col">Dijawab</th><th scope="col">Undangan</th></tr>
+                      <tr><th scope="col">Tamu</th><th scope="col">Jawaban</th><th scope="col">Orang</th><th scope="col">Pantangan</th><th scope="col">Ucapan</th><th scope="col">Dijawab</th><th scope="col">Datang</th><th scope="col">Undangan</th></tr>
                     </thead>
                     <tbody>
                       {list.map((g) => (
-                        <tr key={g.id} className={isNew(g) ? 'is-new' : ''}>
+                        <Fragment key={g.id}>
+                        <tr className={isNew(g) ? 'is-new' : ''}>
                           <td><strong>{g.name}</strong>{isNew(g) && <span className="ad-new">Baru</span>}<br /><span className="ad-muted ad-small">{g.groupLabel}{g.tableNo ? ` · meja ${g.tableNo}` : ''}</span></td>
                           <td><span className={`ad-pill ad-pill--${g.rsvpStatus}`}>{STATUS_LABEL[g.rsvpStatus]}</span></td>
                           <td className="ad-num">{g.rsvpStatus === 'attending' ? g.rsvpPax : '–'} <span className="ad-muted">/ {g.maxPax}</span></td>
                           <td>{g.dietary.map((d) => DIET[d]).concat(g.dietaryNote ? [g.dietaryNote] : []).join(', ') || <span className="ad-muted">–</span>}</td>
                           <td className="ad-msg">{g.message || <span className="ad-muted">–</span>}</td>
                           <td className="ad-small">{g.respondedAt ? relativeTime(g.respondedAt) : <span className="ad-muted">belum</span>}</td>
+                          <td className="ad-small">{g.checkedInAt ? <span className="ad-pill ad-pill--attending">{g.checkedInPax} orang</span> : <span className="ad-muted">–</span>}</td>
                           <td>
                             <div className="ad-actions">
                               <CopyButton text={inviteUrl(wedding, g)} />
                               <a className="ad-link" href={`https://wa.me/?text=${encodeURIComponent(whatsappText(wedding, g))}`} target="_blank" rel="noreferrer">WhatsApp</a>
                               <a className="ad-link" href={inviteUrl(wedding, g)} target="_blank" rel="noreferrer">Buka</a>
+                              <button type="button" className="ad-link" aria-expanded={editing === g.id} onClick={() => setEditing(editing === g.id ? '' : g.id)}>Ubah</button>
                             </div>
                           </td>
                         </tr>
+                        {editing === g.id && <tr className="ad-editrow"><td colSpan={8}><GuestRowEdit guest={g} onClose={() => setEditing('')} /></td></tr>}
+                        </Fragment>
                       ))}
                     </tbody>
                   </table>

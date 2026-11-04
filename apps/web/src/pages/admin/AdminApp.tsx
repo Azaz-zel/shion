@@ -2,11 +2,12 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { brand } from '../../config/brand';
 import { api, errorText } from '../../lib/api';
-import { DEMO_ADMIN, resetDemo } from '../../lib/demoApi';
+import { DEMO_ADMIN, DEMO_USHER, resetDemo } from '../../lib/demoApi';
 import type { AdminUser } from '../../lib/types';
 import RsvpPage from './RsvpPage';
 import ReservationsPage from './ReservationsPage';
 import WeddingsPage from './WeddingsPage';
+import CheckinPage from './CheckinPage';
 import '../../styles/admin.css';
 
 function Login({ onIn }: { onIn: (u: AdminUser) => void }) {
@@ -37,9 +38,9 @@ function Login({ onIn }: { onIn: (u: AdminUser) => void }) {
         <button className="ad-btn" type="submit" disabled={state.busy}>{state.busy ? 'Memeriksa…' : 'Masuk'}</button>
         {api.mode === 'demo' && (
           <div className="ad-demo">
-            <p>Mode demo. Masuk dengan akun contoh:</p>
-            <p><code>{DEMO_ADMIN.email}</code> · <code>{DEMO_ADMIN.password}</code></p>
-            <button type="button" className="ad-link" onClick={() => { setEmail(DEMO_ADMIN.email); setPassword(DEMO_ADMIN.password); }}>Isi otomatis</button>
+            <p>Mode demo. Masuk dengan akun contoh (kata sandi <code>{DEMO_ADMIN.password}</code>):</p>
+            <p><button type="button" className="ad-link" onClick={() => { setEmail(DEMO_ADMIN.email); setPassword(DEMO_ADMIN.password); }}>Owner: {DEMO_ADMIN.email}</button></p>
+            <p><button type="button" className="ad-link" onClick={() => { setEmail(DEMO_USHER.email); setPassword(DEMO_USHER.password); }}>Usher: {DEMO_USHER.email}</button></p>
           </div>
         )}
       </form>
@@ -58,31 +59,35 @@ export default function AdminApp() {
   }, []);
 
   if (user === undefined) return <main className="ad-login"><p role="status">Memuat…</p></main>;
-  if (!user) return <Login onIn={(u) => { setUser(u); if (location.pathname === '/admin' || location.pathname === '/admin/') navigate('/admin/rsvp'); }} />;
+  const home = (u: AdminUser) => (u.role === 'usher' ? '/admin/checkin' : '/admin/rsvp');
+  if (!user) return <Login onIn={(u) => { setUser(u); if (u.role === 'usher' || location.pathname === '/admin' || location.pathname === '/admin/') navigate(home(u)); }} />;
+  const staff = user.role !== 'usher';
 
   return (
     <div className="ad">
       <header className="ad-top">
         <a className="ad-brand" href="/">{brand.name} <span lang="ja">{brand.kanji}</span></a>
         <nav className="ad-tabs" aria-label="Admin">
-          <NavLink to="/admin/rsvp">RSVP tamu</NavLink>
-          <NavLink to="/admin/reservasi">Reservasi</NavLink>
-          <NavLink to="/admin/wedding">Wedding</NavLink>
+          {staff && <NavLink to="/admin/rsvp">RSVP tamu</NavLink>}
+          {staff && <NavLink to="/admin/reservasi">Reservasi</NavLink>}
+          {staff && <NavLink to="/admin/wedding">Wedding</NavLink>}
+          <NavLink to="/admin/checkin">Check-in</NavLink>
         </nav>
         <div className="ad-user">
-          {api.mode === 'demo' && (
+          {api.mode === 'demo' && staff && (
             <button type="button" className="ad-link" onClick={() => { resetDemo(); }}>Reset data demo</button>
           )}
           <span className="ad-muted">{user.email}</span>
           <button type="button" className="ad-link" onClick={async () => { await api.admin.signOut(); setUser(null); }}>Keluar</button>
         </div>
       </header>
-      {api.mode === 'demo' && <p className="ad-banner">Mode demo: data contoh tersimpan di browser ini. Buka undangan contoh di tab lain, kirim RSVP, dan lihat daftar di sini ikut berubah.</p>}
+      {api.mode === 'demo' && staff && <p className="ad-banner">Mode demo: data contoh tersimpan di browser ini. Buka undangan contoh di tab lain, kirim RSVP, dan lihat daftar di sini ikut berubah.</p>}
       <Routes>
-        <Route path="rsvp" element={<RsvpPage />} />
-        <Route path="reservasi" element={<ReservationsPage />} />
-        <Route path="wedding" element={<WeddingsPage />} />
-        <Route path="*" element={<Navigate to="/admin/rsvp" replace />} />
+        {staff && <Route path="rsvp" element={<RsvpPage />} />}
+        {staff && <Route path="reservasi" element={<ReservationsPage />} />}
+        {staff && <Route path="wedding" element={<WeddingsPage />} />}
+        <Route path="checkin" element={<CheckinPage />} />
+        <Route path="*" element={<Navigate to={home(user)} replace />} />
       </Routes>
     </div>
   );

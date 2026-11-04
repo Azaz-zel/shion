@@ -283,8 +283,9 @@ begin
 end;
 $$;
 
-revoke all on function public.new_code(text) from public;
-revoke all on function public.invitation_json(public.guests, public.weddings) from public;
+-- Supabase memberi EXECUTE ke anon/authenticated secara default; cabut untuk fungsi internal.
+revoke all on function public.new_code(text) from public, anon, authenticated;
+revoke all on function public.invitation_json(public.guests, public.weddings) from public, anon, authenticated;
 grant execute on function public.create_reservation(text, text, date, text, integer, text, text, text) to anon, authenticated;
 grant execute on function public.create_wedding_inquiry(text, text, date, text, integer, text) to anon, authenticated;
 grant execute on function public.get_invitation(text, text) to anon, authenticated;

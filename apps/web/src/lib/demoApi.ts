@@ -6,15 +6,18 @@ import {
   UserError,
   type AdminUser,
   type Api,
+  type CheckInResult,
   type Guest,
+  type GuestBrief,
   type InvitationView,
   type Reservation,
   type Wedding,
 } from './types';
 
-const KEY = 'shion-demo-v1';
+const KEY = 'shion-demo-v2';
 const SESSION_KEY = 'shion-demo-admin';
 export const DEMO_ADMIN = { email: 'owner@shion.demo', password: 'shion-demo' };
+export const DEMO_USHER = { email: 'usher@shion.demo', password: 'shion-demo' };
 export const DEMO_GUEST_TOKEN = 'demo-tamu-shion';
 
 interface Db {
@@ -50,10 +53,10 @@ function seed(): Db {
     dietary: Guest['dietary'], note: string, msg: string, at: number | null, table: string, checked = false): Guest => ({
     id, weddingId: rina.id, name, groupLabel: group, maxPax: max, token: `demo-${id}`, rsvpStatus: status, rsvpPax: pax,
     dietary, dietaryNote: note, message: msg, respondedAt: at === null ? null : hoursAgo(at), tableNo: table,
-    checkedInAt: checked ? now : null,
+    checkedInAt: checked ? now : null, checkedInPax: checked ? pax : 0,
   });
   const guests: Guest[] = [
-    g('budi', 'Budi Santoso', 'Keluarga', 2, 'attending', 2, ['no_pork'], '', 'Selamat untuk kalian berdua.', 70, '1'),
+    g('budi', 'Budi Santoso', 'Keluarga', 2, 'attending', 2, ['no_pork'], '', 'Selamat untuk kalian berdua.', 70, '1', true),
     g('sari', 'Sari Wulandari', 'Keluarga', 4, 'attending', 3, [], '', '', 52, '1'),
     g('andi', 'Andi Wijaya', 'Teman', 1, 'attending', 1, ['vegetarian'], '', 'Sampai jumpa di Shion!', 30, '4'),
     g('maya', 'Maya Putri', 'Teman', 2, 'declined', 0, [], '', 'Maaf sedang di luar kota, doa terbaik untuk kalian.', 26, ''),
@@ -140,12 +143,23 @@ function view(guest: Guest, wedding: Wedding): InvitationView {
   };
 }
 
-function requireAdmin(): AdminUser {
+function brief(g: Guest): GuestBrief {
+  return {
+    id: g.id, name: g.name, groupLabel: g.groupLabel, maxPax: g.maxPax, rsvpStatus: g.rsvpStatus, rsvpPax: g.rsvpPax,
+    dietary: g.dietary, dietaryNote: g.dietaryNote, tableNo: g.tableNo, checkedInAt: g.checkedInAt, checkedInPax: g.checkedInPax,
+  };
+}
+
+function requireAdmin(roles: AdminUser['role'][] = ['owner', 'staff']): AdminUser {
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
-    if (raw) return JSON.parse(raw) as AdminUser;
-  } catch {
-    /* lanjut ke error */
+    if (raw) {
+      const user = JSON.parse(raw) as AdminUser;
+      if (roles.includes(user.role)) return user;
+      throw new UserError('Akun Anda tidak punya akses ke fitur ini.');
+    }
+  } catch (e) {
+    if (e instanceof UserError) throw e;
   }
   throw new UserError('Sesi admin berakhir. Silakan masuk lagi.');
 }
@@ -211,6 +225,16 @@ export const demoApi: Api = {
     return view(guest, wedding);
   },
 
+  async simulatePayment(code, phone) {
+    await wait(400);
+    const d = db();
+    const r = d.reservations.find((x) => x.code === code && x.phone === phone.trim() && x.type === 'dinner_package' && x.paymentStatus === 'pending');
+    if (!r) throw new UserError('Reservasi tidak ditemukan atau sudah dibayar.');
+    r.paymentStatus = 'paid_simulated';
+    if (r.status === 'pending') r.status = 'confirmed';
+    save(d);
+  },
+
   admin: {
     async session() {
       try {
@@ -222,10 +246,9 @@ export const demoApi: Api = {
     },
     async signIn(email, password) {
       await wait();
-      if (email.trim().toLowerCase() !== DEMO_ADMIN.email || password !== DEMO_ADMIN.password) {
-        throw new UserError('Email atau kata sandi salah.');
-      }
-      const user: AdminUser = { email: DEMO_ADMIN.email, role: 'owner' };
+      const account = [DEMO_ADMIN, DEMO_USHER].find((a) => a.email === email.trim().toLowerCase() && a.password === password);
+      if (!account) throw new UserError('Email atau kata sandi salah.');
+      const user: AdminUser = { email: account.email, role: account === DEMO_USHER ? 'usher' : 'owner' };
       try {
         sessionStorage.setItem(SESSION_KEY, JSON.stringify(user));
       } catch {
@@ -241,12 +264,12 @@ export const demoApi: Api = {
       }
     },
     async weddings() {
-      requireAdmin();
+      requireAdmin(['owner', 'staff', 'usher']);
       await wait(150);
       return [...db().weddings].sort((a, b) => a.eventDate.localeCompare(b.eventDate));
     },
     async guests(weddingId) {
-      requireAdmin();
+      requireAdmin(['owner', 'staff', 'usher']);
       await wait(150);
       return db().guests.filter((g) => g.weddingId === weddingId);
     },
@@ -273,6 +296,48 @@ export const demoApi: Api = {
       }
       w.status = status;
       save(d);
+    },
+    async addGuests(weddingId, rows) {
+      requireAdmin();
+      const d = db();
+      if (!d.weddings.some((w) => w.id === weddingId)) throw new UserError('Wedding tidak ditemukan.');
+      rows.forEach((r) => {
+        d.guests.push({
+          id: crypto.randomUUID(), weddingId, name: r.name.trim(), groupLabel: r.groupLabel.trim(), maxPax: r.maxPax,
+          token: crypto.randomUUID().replace(/-/g, ''), rsvpStatus: 'pending', rsvpPax: 0, dietary: [], dietaryNote: '',
+          message: '', respondedAt: null, tableNo: r.tableNo.trim(), checkedInAt: null, checkedInPax: 0,
+        });
+      });
+      save(d);
+      return rows.length;
+    },
+    async updateGuest(id, patch) {
+      requireAdmin();
+      const d = db();
+      const g = d.guests.find((x) => x.id === id);
+      if (!g) throw new UserError('Tamu tidak ditemukan.');
+      if (patch.maxPax !== undefined && patch.maxPax < g.rsvpPax) throw new UserError(`Tamu ini sudah RSVP untuk ${g.rsvpPax} orang.`);
+      Object.assign(g, patch);
+      save(d);
+    },
+    async deleteGuest(id) {
+      requireAdmin();
+      const d = db();
+      d.guests = d.guests.filter((x) => x.id !== id);
+      save(d);
+    },
+    async checkIn(weddingId, by): Promise<CheckInResult> {
+      requireAdmin(['owner', 'staff', 'usher']);
+      await wait(200);
+      const d = db();
+      const g = by.guestId ? d.guests.find((x) => x.id === by.guestId) : d.guests.find((x) => x.token === by.token);
+      if (!g) return { status: 'invalid' };
+      if (g.weddingId !== weddingId) return { status: 'other_event' };
+      if (g.checkedInAt) return { status: 'already', guest: brief(g) };
+      g.checkedInAt = new Date().toISOString();
+      g.checkedInPax = Math.max(1, Math.min(by.pax ?? (g.rsvpPax || 1), g.maxPax));
+      save(d);
+      return { status: 'ok', guest: brief(g) };
     },
     subscribe(onChange) {
       listeners.add(onChange);
