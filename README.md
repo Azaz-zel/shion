@@ -1,10 +1,19 @@
 # Shion
 
-Situs restoran Jepang (fiktif) dengan reservasi meja, paket dinner, permintaan wedding, undangan digital per tamu dengan RSVP dan QR, serta panel admin untuk memantau semuanya. Proyek portofolio.
+Situs restoran Jepang (fiktif) dengan reservasi meja, paket dinner dengan simulasi pembayaran QRIS, permintaan wedding, undangan digital per tamu dengan RSVP dan QR masuk, serta panel admin untuk memantau semuanya. Proyek portofolio.
 
 - `apps/web`: React + Vite + TypeScript
-- `supabase/`: skema database, aturan akses (RLS), fungsi RPC, dan data contoh
-- `docs/`: rencana, konten dua bahasa, dan kredit foto
+- `supabase/`: skema database, aturan akses (RLS), fungsi RPC, data contoh, jadwal reset demo
+- `docs/`: rencana, konten dua bahasa, kredit foto, dan **tutorial setup database**
+
+## Fitur
+
+| Untuk | Fitur |
+|---|---|
+| Pengunjung | Beranda dua bahasa (ID/EN) dengan animasi scroll, reservasi meja, paket Ume/Take/Matsu dengan layar QRIS simulasi, permintaan wedding |
+| Tamu wedding | Undangan pribadi `/w/<slug>?t=<token>`, RSVP (jumlah orang, pantangan, ucapan, persetujuan data), QR masuk |
+| Owner & staff | RSVP tamu langsung (ringkasan, rekap dapur, jawaban terbaru), tambah tamu, impor CSV, ubah dan hapus tamu, kirim link via WhatsApp, reservasi per hari, pipeline wedding |
+| Usher | Check-in dengan kamera HP (scan QR) atau cari nama, penghitung tamu datang, antrean otomatis saat sinyal hilang |
 
 ## Menjalankan secara lokal
 
@@ -18,28 +27,29 @@ Tanpa file `.env`, aplikasi berjalan dalam **mode demo**: data contoh disimpan d
 
 | Halaman | Alamat |
 |---|---|
-| Beranda + form reservasi | `/` |
-| Undangan contoh (tamu demo) | `/w/rina-dimas?t=demo-tamu-shion` |
-| Panel admin | `/admin` (demo: `owner@shion.demo` / `shion-demo`) |
+| Beranda + reservasi | `/` |
+| Undangan contoh | `/w/rina-dimas?t=demo-tamu-shion` |
+| Panel admin | `/admin`, akun demo `owner@shion.demo` atau `usher@shion.demo`, kata sandi `shion-demo` |
 
-Coba buka admin di satu tab dan undangan contoh di tab lain. Setelah tamu mengirim RSVP, daftar di admin ikut berubah tanpa perlu dimuat ulang.
+Coba buka admin di satu tab dan undangan contoh di tab lain. Setelah tamu mengirim RSVP, daftar di admin ikut berubah tanpa dimuat ulang.
 
-## Memakai Supabase
+## Menghubungkan database
 
-1. Buat project di Supabase.
-2. Jalankan `supabase/migrations/20261104000000_init.sql`, lalu `supabase/seed.sql`, di SQL Editor (atau `supabase db push` dengan Supabase CLI).
-3. Buat user admin di Authentication > Users, lalu beri peran:
-   ```sql
-   insert into public.profiles (id, role, display_name)
-   select id, 'owner', 'Owner Shion' from auth.users where email = 'email-anda@contoh.com';
-   ```
-4. Salin `apps/web/.env.example` menjadi `apps/web/.env` dan isi `VITE_SUPABASE_URL` serta `VITE_SUPABASE_ANON_KEY`.
+Ikuti **[docs/SETUP-DATABASE.md](docs/SETUP-DATABASE.md)**: membuat project Supabase, menjalankan migrasi, membuat akun admin, mengisi `.env`, dan deploy ke Vercel.
 
-Pengunjung dan tamu tidak punya akses langsung ke tabel. Mereka hanya memanggil fungsi `create_reservation`, `create_wedding_inquiry`, `get_invitation`, dan `submit_rsvp`. Admin membaca tabel lewat RLS sesuai peran (`owner`, `staff`, `usher`) dan menerima pembaruan realtime.
+## Perintah
 
-## Deploy
+```bash
+npm run dev        # server pengembangan
+npm run build      # cek tipe + build produksi ke dist/
+npm run typecheck  # cek tipe saja
+```
 
-`apps/web` siap di-deploy ke Vercel (root directory `apps/web`). `vercel.json` mengarahkan semua rute ke `index.html`.
+## Catatan
+
+- Animasi scroll beranda memakai CSS scroll-driven animation (Chrome, Edge, Safari 16.2+). Di Firefox halaman tampil lengkap tanpa animasi scroll.
+- Pembayaran QRIS hanya simulasi. Tidak ada payment gateway sungguhan.
+- Identitas restoran (nama, alamat, kontak) ada di `apps/web/src/config/brand.ts`.
 
 ## Kredit
 
