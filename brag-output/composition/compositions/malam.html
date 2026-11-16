@@ -1,0 +1,83 @@
+<template>
+  <style>
+    @font-face { font-family: 'TikTok Sans'; src: url('assets/fonts/tiktok-sans.woff2') format('woff2'); font-weight: 400 900; font-stretch: 100% 125%; }
+    @font-face { font-family: 'Brygada 1918'; src: url('assets/fonts/brygada-1918.woff2') format('woff2'); font-weight: 400 600; }
+    @font-face { font-family: 'Yuji Syuku'; src: url('assets/fonts/yuji-syuku-subset.woff2') format('woff2'); }
+
+    #root { position: absolute; inset: 0; overflow: hidden; color: #f0e2d8; font-family: 'TikTok Sans', sans-serif; }
+    #root * { box-sizing: border-box; margin: 0; padding: 0; }
+    .serif { font-family: 'Brygada 1918', serif; }
+    .kanji { font-family: 'Yuji Syuku', serif; }
+    .wide { font-weight: 900; font-stretch: 125%; text-transform: uppercase; letter-spacing: -0.02em; }
+    .w { display: inline-block; }
+
+    #root { background: #2a1a2b; }
+    #malam-title { position: absolute; top: 200px; left: 70px; right: 70px; font-size: 74px; white-space: nowrap; line-height: 1; text-transform: uppercase; }
+    #malam-sub { position: absolute; top: 300px; left: 70px; font-size: 34px; letter-spacing: .06em; color: #b78cf2; }
+    #malam-frame { position: absolute; top: 380px; left: 70px; width: 940px; height: 600px; overflow: hidden; background: #3a2a3b; }
+    #malam-frame img { position: absolute; left: 0; top: 0; width: 940px; height: 600px; object-fit: cover; opacity: 0; }
+    #malam-rail { position: absolute; top: 1016px; left: 70px; right: 70px; list-style: none; }
+    #malam-rail li { display: flex; align-items: baseline; gap: 36px; height: 64px; padding-left: 40px; opacity: .32; }
+    #malam-rail .t { font-size: 40px; width: 120px; font-variant-numeric: tabular-nums; }
+    #malam-rail .n { font-size: 40px; font-weight: 500; }
+    #malam-dot { position: absolute; top: 1036px; left: 70px; width: 14px; height: 14px; border-radius: 50%; background: #b78cf2; }
+    #malam-wipe { position: absolute; inset: 0; background: #f0e2d8; clip-path: inset(100% 0 0 0); }
+
+  </style>
+  <div id="root" data-composition-id="malam" data-width="1080" data-height="1920">
+    <h2 id="malam-title" class="serif">Satu malam omakase</h2>
+    <p id="malam-sub">18.00 → 22.00 · sepuluh course</p>
+    <div id="malam-frame" data-layout-allow-overflow>
+      <img id="malam-p0" src="assets/img/h1.jpg" alt="">
+      <img id="malam-p1" src="assets/img/h2.jpg" alt="">
+      <img id="malam-p2" src="assets/img/h3.jpg" alt="">
+      <img id="malam-p3" src="assets/img/h4.jpg" alt="">
+      <img id="malam-p4" src="assets/img/h5.jpg" alt="">
+    </div>
+    <ul id="malam-rail">
+      <li id="malam-r0"><span class="serif t">18.00</span><span class="n">Sakizuke</span></li>
+      <li id="malam-r1"><span class="serif t">19.00</span><span class="n">Owan</span></li>
+      <li id="malam-r2"><span class="serif t">20.00</span><span class="n">Yakimono</span></li>
+      <li id="malam-r3"><span class="serif t">21.00</span><span class="n">Shokuji</span></li>
+      <li id="malam-r4"><span class="serif t">22.00</span><span class="n">Kanmi</span></li>
+    </ul>
+    <div id="malam-dot" data-layout-ignore></div>
+    <div id="malam-wipe" data-layout-ignore></div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+
+    tl.set('#malam-r0', { opacity: .32 }, 0);
+    tl.set('#malam-r1', { opacity: .32 }, 0);
+    tl.set('#malam-r2', { opacity: .32 }, 0);
+    tl.set('#malam-r3', { opacity: .32 }, 0);
+    tl.set('#malam-r4', { opacity: .32 }, 0);
+    tl.set('#malam-dot', { y: 0 }, 0);
+    tl.fromTo('#malam-title', { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: .2, ease: 'power4.out' }, 0);
+    tl.fromTo('#malam-sub', { opacity: 0, filter: 'blur(6px)' }, { opacity: 1, filter: 'blur(0px)', duration: .18, ease: 'power4.out' }, .12);
+    // beat-grid: hours at 7.64, 8.74, 9.83, 10.93, 12.02 (every other beat, each label holds about 1.09 s)
+    tl.fromTo('#malam-p0', { opacity: 0 }, { opacity: 1, duration: .35, ease: 'power2.inOut' }, 0.00);
+    tl.fromTo('#malam-r0', { opacity: .32 }, { opacity: 1, duration: .25, ease: 'power2.out' }, 0.04);
+    tl.fromTo('#malam-dot', { y: 0 }, { y: 0, duration: .3, ease: 'expo.out' }, 0.04);
+    tl.fromTo('#malam-p1', { opacity: 0 }, { opacity: 1, duration: .35, ease: 'power2.inOut' }, 1.09);
+    tl.fromTo('#malam-r1', { opacity: .32 }, { opacity: 1, duration: .25, ease: 'power2.out' }, 1.14);
+    tl.fromTo('#malam-dot', { y: 0 }, { y: 64, duration: .3, ease: 'expo.out' }, 1.14);
+    tl.fromTo('#malam-r0', { opacity: 1 }, { opacity: .32, duration: .25, ease: 'power2.out' }, 1.14);
+    tl.fromTo('#malam-p2', { opacity: 0 }, { opacity: 1, duration: .35, ease: 'power2.inOut' }, 2.18);
+    tl.fromTo('#malam-r2', { opacity: .32 }, { opacity: 1, duration: .25, ease: 'power2.out' }, 2.23);
+    tl.fromTo('#malam-dot', { y: 64 }, { y: 128, duration: .3, ease: 'expo.out' }, 2.23);
+    tl.fromTo('#malam-r1', { opacity: 1 }, { opacity: .32, duration: .25, ease: 'power2.out' }, 2.23);
+    tl.fromTo('#malam-p3', { opacity: 0 }, { opacity: 1, duration: .35, ease: 'power2.inOut' }, 3.28);
+    tl.fromTo('#malam-r3', { opacity: .32 }, { opacity: 1, duration: .25, ease: 'power2.out' }, 3.33);
+    tl.fromTo('#malam-dot', { y: 128 }, { y: 192, duration: .3, ease: 'expo.out' }, 3.33);
+    tl.fromTo('#malam-r2', { opacity: 1 }, { opacity: .32, duration: .25, ease: 'power2.out' }, 3.33);
+    tl.fromTo('#malam-p4', { opacity: 0 }, { opacity: 1, duration: .35, ease: 'power2.inOut' }, 4.37);
+    tl.fromTo('#malam-r4', { opacity: .32 }, { opacity: 1, duration: .25, ease: 'power2.out' }, 4.42);
+    tl.fromTo('#malam-dot', { y: 192 }, { y: 256, duration: .3, ease: 'expo.out' }, 4.42);
+    tl.fromTo('#malam-r3', { opacity: 1 }, { opacity: .32, duration: .25, ease: 'power2.out' }, 4.42);
+    // Cream paper wipes up from the bottom into the course table.
+    tl.fromTo('#malam-wipe', { clipPath: 'inset(100% 0 0 0)' }, { clipPath: 'inset(0% 0 0 0)', duration: .4, ease: 'power3.inOut' }, 5.0);
+
+    window.__timelines["malam"] = tl;
+  </script>
+</template>

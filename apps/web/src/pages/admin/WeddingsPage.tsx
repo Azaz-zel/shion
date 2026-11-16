@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { api, errorText } from '../../lib/api';
 import { formatDate } from '../../i18n/lang';
 import type { Wedding, WeddingStatus } from '../../lib/types';
-import { relativeTime, useLive } from './useLive';
+import { brand } from '../../config/brand';
+import { coupleName, relativeTime, useLive, waLink } from './useLive';
 
 const STATUS: Array<[WeddingStatus, string]> = [
   ['inquiry', 'Permintaan baru'], ['consultation', 'Konsultasi'], ['confirmed', 'Terkonfirmasi'], ['completed', 'Selesai'], ['cancelled', 'Dibatalkan'],
@@ -12,11 +13,10 @@ const ORDER: WeddingStatus[] = ['inquiry', 'consultation', 'confirmed', 'complet
 function Item({ w }: { w: Wedding }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const names = w.couple2 ? `${w.couple1} & ${w.couple2}` : w.contactName;
   return (
     <li className="ad-wed">
       <div>
-        <h3>{names}</h3>
+        <h3>{coupleName(w)}</h3>
         <p className="ad-muted ad-small">{w.code} · masuk {relativeTime(w.createdAt)}</p>
       </div>
       <dl className="ad-wed__facts">
@@ -25,7 +25,7 @@ function Item({ w }: { w: Wedding }) {
         <div><dt>Kontak</dt><dd>{w.contactName} · {w.phone}</dd></div>
         {w.notes && <div className="ad-wed__wide"><dt>Catatan</dt><dd>{w.notes}</dd></div>}
       </dl>
-      <div>
+      <div className="ad-actions">
         <label className="sr-only" htmlFor={`wst-${w.id}`}>Status {w.code}</label>
         <select id={`wst-${w.id}`} className={`ad-status ad-status--${w.status}`} value={w.status} disabled={busy}
           onChange={async (e) => {
@@ -41,6 +41,7 @@ function Item({ w }: { w: Wedding }) {
           }}>
           {STATUS.map(([s, label]) => <option key={s} value={s}>{label}</option>)}
         </select>
+        <a className="ad-link" aria-label={`WhatsApp ${w.contactName}`} href={waLink(w.phone, `Halo ${w.contactName}, kami dari ${brand.name} mengenai wedding ${w.code}.`)} target="_blank" rel="noreferrer">WhatsApp</a>
         {error && <p className="ad-error ad-small" role="alert">{error}</p>}
       </div>
     </li>
@@ -55,7 +56,7 @@ export default function WeddingsPage() {
       <div className="ad-head">
         <div>
           <h1>Wedding</h1>
-          <p className="ad-muted">Permintaan dari situs masuk sebagai “Permintaan baru”. Setelah dikonfirmasi, daftar tamunya bisa dipantau di tab RSVP tamu.</p>
+          <p className="ad-muted">Permintaan dari situs masuk sebagai “Permintaan baru”. Setelah dikonfirmasi, link undangannya bisa dibagikan dari menu Tamu undangan.</p>
         </div>
       </div>
       {live.error && <p className="ad-error" role="alert">{live.error}</p>}

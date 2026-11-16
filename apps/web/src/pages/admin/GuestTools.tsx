@@ -50,19 +50,29 @@ export function GuestTools({ weddingId }: { weddingId: string }) {
       </div>
       {mode === 'one' && (
         <form className="ad-tools__form" onSubmit={addOne}>
-          <label className="ad-field"><span>Nama</span><input id="gt-name" value={name} onChange={(e) => setName(e.target.value)} required /></label>
-          <label className="ad-field"><span>Grup</span><input id="gt-group" value={group} placeholder="Keluarga, Teman, Kantor" onChange={(e) => setGroup(e.target.value)} /></label>
-          <label className="ad-field"><span>Maks orang</span>
-            <select id="gt-max" value={maxPax} onChange={(e) => setMaxPax(Number(e.target.value))}>
-              {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </label>
-          <label className="ad-field"><span>Meja</span><input id="gt-table" value={table} onChange={(e) => setTable(e.target.value)} /></label>
-          <button className="ad-btn" type="submit" disabled={state.busy}>Simpan tamu</button>
+          <div className="ad-tools__head">
+            <h3>Tamu baru</h3>
+            <p className="ad-muted ad-small">Hanya nama yang wajib. Link undangan dibuat otomatis setelah disimpan.</p>
+          </div>
+          <div className="ad-tools__fields">
+            <label className="ad-field"><span>Nama</span><input id="gt-name" value={name} placeholder="Nama di undangan" onChange={(e) => setName(e.target.value)} required /></label>
+            <label className="ad-field"><span>Grup</span><input id="gt-group" value={group} placeholder="Keluarga, Teman, Kantor" onChange={(e) => setGroup(e.target.value)} /></label>
+            <label className="ad-field"><span>Maks orang</span>
+              <select id="gt-max" value={maxPax} onChange={(e) => setMaxPax(Number(e.target.value))}>
+                {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
+            <label className="ad-field"><span>Meja</span><input id="gt-table" value={table} placeholder="Opsional" onChange={(e) => setTable(e.target.value)} /></label>
+          </div>
+          <div className="ad-actions">
+            <button className="ad-btn" type="submit" disabled={state.busy}>{state.busy ? 'Menyimpan…' : 'Simpan tamu'}</button>
+            <button className="ad-link" type="button" onClick={() => setMode('closed')}>Tutup</button>
+          </div>
         </form>
       )}
       {mode === 'csv' && (
         <div className="ad-tools__csv">
+          <h3>Impor banyak tamu</h3>
           <p className="ad-muted ad-small">Satu tamu per baris: <code>nama,grup,maks_orang,meja</code>. Hanya nama yang wajib. Bisa ditempel dari Excel atau Google Sheets (simpan sebagai CSV).</p>
           <label className="ad-field"><span>File CSV</span>
             <input id="gt-file" type="file" accept=".csv,text/csv,text/plain" onChange={async (e) => { const f = e.target.files?.[0]; if (f) setCsv(await f.text()); }} />
@@ -76,7 +86,10 @@ export function GuestTools({ weddingId }: { weddingId: string }) {
               {parsed.skipped.length > 0 && <span className="ad-attn"> {parsed.skipped.length} baris dilewati: {parsed.skipped.slice(0, 3).map((s) => `baris ${s.line} (${s.reason})`).join(', ')}{parsed.skipped.length > 3 ? ', …' : ''}.</span>}
             </p>
           )}
-          <button className="ad-btn" type="button" disabled={state.busy || parsed.rows.length === 0} onClick={importCsv}>Impor {parsed.rows.length || ''} tamu</button>
+          <div className="ad-actions">
+            <button className="ad-btn" type="button" disabled={state.busy || parsed.rows.length === 0} onClick={importCsv}>Impor {parsed.rows.length || ''} tamu</button>
+            <button className="ad-link" type="button" onClick={() => setMode('closed')}>Tutup</button>
+          </div>
         </div>
       )}
       {state.error && <p className="ad-error" role="alert">{state.error}</p>}

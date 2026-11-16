@@ -4,7 +4,7 @@ import { api, errorText } from '../../lib/api';
 import { inviteCopy } from '../../content/invitation';
 import { todayISO } from '../../lib/validation';
 import { UserError, type CheckInResult, type Guest } from '../../lib/types';
-import { useLive } from './useLive';
+import { coupleName, useLive } from './useLive';
 
 const DIET = inviteCopy.id.diets;
 const QUEUE_KEY = 'shion-checkin-queue';
@@ -247,13 +247,13 @@ export default function CheckinPage() {
     <main className="ck">
       <div className="ck-head">
         <div>
-          <h1>{wedding.couple1} &amp; {wedding.couple2}</h1>
+          <h1>{coupleName(wedding)}</h1>
           <p className="ck-muted">{wedding.eventDate === today ? 'Hari ini' : new Date(wedding.eventDate + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long' })} · {wedding.code}</p>
         </div>
         {options.length > 1 && (
           <label className="ck-field"><span className="sr-only">Pilih wedding</span>
             <select id="ck-wedding" value={wedding.id} onChange={(e) => { setPicked(e.target.value); setShown(null); }}>
-              {options.map((w) => <option key={w.id} value={w.id}>{w.couple1} & {w.couple2}</option>)}
+              {options.map((w) => <option key={w.id} value={w.id}>{coupleName(w)}</option>)}
             </select>
           </label>
         )}

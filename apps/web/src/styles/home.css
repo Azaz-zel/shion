@@ -180,11 +180,14 @@ html[data-8b-live] #opening .op__night { animation-name: opening-night-g-soft, o
 /* end fallback faces */
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
+/* Tautan #bagian (navbar, tombol pesan, footer) bergulir halus ke tujuannya. */
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
 body { margin: 0; background: var(--color-1); color: var(--color-2); font-family: var(--font-1); font-size: 16px; line-height: 1.55; font-weight: 400; font-stretch: 100%; overflow-x: clip; }
 img { display: block; max-width: 100%; height: auto; }
 a { color: inherit; }
 button, input, textarea, select { font: inherit; color: inherit; }
 h1, h2, h3, h4, p, ul, ol, dl, dd, figure, blockquote { margin: 0; }
+p, dd { text-wrap: pretty; }
 ul, ol { padding: 0; list-style: none; }
 :focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
@@ -210,9 +213,17 @@ ul, ol { padding: 0; list-style: none; }
 .m-btn-2 { position: relative; display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 22px; border: 0; border-radius: 0; background: var(--color-1); color: var(--color-2); font-family: var(--font-1); font-size: 15px; font-weight: 500; letter-spacing: 0.01em; text-decoration: none; cursor: pointer; isolation: isolate; overflow: hidden; }
 .m-btn-2::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--color-3); clip-path: ellipse(40% 0% at 50% 100%); transition: clip-path .5s cubic-bezier(.5, 0, .1, 1); }
 .m-btn-2:focus-visible { outline-color: var(--color-1); }
+/* Tombol garis untuk aksi per baris: terisi gelap dari bawah saat hover, panah bergeser. */
+.m-btn-3 { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 44px; padding: 0 18px; border: 1px solid currentColor; border-radius: 0; background: transparent; color: inherit; font-family: var(--font-1); font-size: 15px; font-weight: 500; letter-spacing: 0.01em; text-decoration: none; white-space: nowrap; cursor: pointer; isolation: isolate; overflow: hidden; transition: color .3s; }
+.m-btn-3::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--color-2); clip-path: ellipse(40% 0% at 50% 100%); transition: clip-path .5s cubic-bezier(.5, 0, .1, 1); }
+.m-btn-3 svg { flex: none; transition: translate .35s cubic-bezier(.5, 0, .1, 1); }
+.m-btn-3:active { translate: 0 1px; }
 @media (hover: hover) {
   .m-btn:hover::before, .m-btn-2:hover::before { clip-path: ellipse(90% 150% at 50% 100%); }
   .m-btn:hover .m-btn__label { color: var(--color-2); }
+  .m-btn-3:hover { color: var(--color-1); }
+  .m-btn-3:hover::before { clip-path: ellipse(90% 150% at 50% 100%); }
+  .m-btn-3:hover svg { translate: 3px 0; }
 }
 .m-link { display: inline; font-family: var(--font-1); font-size: 15px; font-weight: 500; letter-spacing: 0.01em; color: inherit; text-decoration: none; background: linear-gradient(currentColor, currentColor) 0 100% / 100% 1px no-repeat; padding-bottom: 2px; }
 .m-link-2 { display: inline; font-family: var(--font-1); font-size: 15px; font-weight: 400; letter-spacing: 0; color: inherit; text-decoration: none; background: linear-gradient(currentColor, currentColor) 0 100% / 0% 1px no-repeat; padding-bottom: 2px; }
@@ -237,6 +248,29 @@ ul, ol { padding: 0; list-style: none; }
 .m-field__input { width: 100%; min-height: 40px; padding: 6px 0; border: 0; border-bottom: 1px solid currentColor; border-radius: 0; background: transparent; font-family: var(--font-1); font-size: 16px; }
 .m-field__input:focus-visible { outline: 2px solid var(--color-2); outline-offset: 2px; }
 textarea.m-field__input { min-height: 72px; resize: vertical; }
+.m-field__input { transition: border-color .3s; }
+.m-field__input::placeholder { color: color-mix(in oklab, var(--color-2) 72%, transparent); opacity: 1; }
+@media (hover: hover) { .m-field__input:hover { border-bottom-color: var(--color-4); } }
+/* Dropdown: panah sendiri menggantikan panah bawaan browser. Warna panah ditulis langsung karena data URI tidak bisa membaca variabel. */
+select.m-field__input { -webkit-appearance: none; appearance: none; padding-right: 28px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232a1a2b' stroke-width='2'%3E%3Cpath d='m5 9 7 7 7-7'/%3E%3C/svg%3E") right 2px center / 14px no-repeat; cursor: pointer; }
+/* Daftar pilihan digambar sendiri di browser yang mendukung base-select (Chrome dan Edge 135+).
+   shortcut: browser lain tetap memakai daftar bawaan, ganti ke komponen listbox kalau itu jadi masalah. */
+@supports (appearance: base-select) {
+  select.m-field__input, select.m-field__input::picker(select) { appearance: base-select; }
+  select.m-field__input { display: flex; align-items: center; }
+  select.m-field__input::picker-icon { display: none; }
+  select.m-field__input::picker(select) { margin-top: 8px; max-height: min(340px, 60vh); padding: 6px; border: 1px solid var(--color-2); border-radius: 0; background: var(--color-1); color: var(--color-2); box-shadow: 0 24px 48px -24px color-mix(in oklab, var(--color-2) 70%, transparent); scrollbar-color: color-mix(in oklab, var(--color-2) 40%, transparent) transparent; }
+  .m-field__input option { display: flex; align-items: center; min-height: 44px; padding: 0 14px; background: transparent; font-family: var(--font-1); font-size: 16px; cursor: pointer; transition: background-color .2s; }
+  .m-field__input option:hover { background: color-mix(in oklab, var(--color-3) 34%, transparent); }
+  .m-field__input option:focus-visible { outline: 2px solid var(--color-2); outline-offset: -2px; }
+  .m-field__input option:checked { background: var(--color-2); color: var(--color-1); }
+  .m-field__input option::checkmark { display: none; }
+  @media (prefers-reduced-motion: no-preference) {
+    select.m-field__input::picker(select) { opacity: 0; translate: 0 -8px; transition: opacity .25s cubic-bezier(.5, 0, .1, 1), translate .25s cubic-bezier(.5, 0, .1, 1), display .25s allow-discrete, overlay .25s allow-discrete; }
+    select.m-field__input::picker(select):popover-open { opacity: 1; translate: 0 0; }
+    @starting-style { select.m-field__input::picker(select):popover-open { opacity: 0; translate: 0 -8px; } }
+  }
+}
 }
 
 /* --- section:navigation --- */
@@ -382,14 +416,14 @@ textarea.m-field__input { min-height: 72px; resize: vertical; }
 #standing .so__line { position: absolute; left: 0; right: 0; top: 0; height: 1px; background: currentColor; transform-origin: 0 50%; }
 #standing .so__name { font-size: clamp(28px, 2.9vw, 42px); line-height: 1; }
 #standing .so__price { font-family: var(--font-2); font-size: clamp(20px, 1.9vw, 26px); line-height: 1.1; text-transform: uppercase; }
-#standing .so__row .m-link { justify-self: end; }
+#standing .so__row .m-btn-3 { justify-self: end; min-width: 154px; justify-content: space-between; }
 #standing .so__foot { position: relative; padding-top: 18px; max-width: 60ch; }
 @media (max-width: 860px) {
   #standing .so__head { grid-template-columns: minmax(0, 1fr); }
   #standing .so__cols { display: none; }
   #standing .so__row { grid-template-columns: minmax(0, 1fr) auto; }
   #standing .so__what { grid-column: 1 / -1; }
-  #standing .so__row .m-link { justify-self: start; }
+  #standing .so__row .m-btn-3 { justify-self: start; }
 }
 }
 

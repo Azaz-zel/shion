@@ -30,8 +30,10 @@ export default async function middleware(request: Request): Promise<Response | u
       const w = (await res.json()) as { couple1: string; couple2: string; eventDate: string } | null;
       if (w?.couple1) {
         const date = new Date(w.eventDate + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-        title = `${w.couple1} & ${w.couple2} · ${date}`;
-        description = `Anda diundang ke pernikahan ${w.couple1} & ${w.couple2} di Shion, Jakarta Selatan. Buka untuk RSVP.`;
+        // Wedding dari form situs belum punya nama pasangan kedua: jangan sisakan "&" menggantung.
+        const names = [w.couple1, w.couple2].filter(Boolean).join(' & ');
+        title = `${names} · ${date}`;
+        description = `Anda diundang ke pernikahan ${names} di Shion, Jakarta Selatan. Buka untuk RSVP.`;
       }
     } catch {
       /* pakai teks umum */

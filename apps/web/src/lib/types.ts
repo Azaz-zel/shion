@@ -3,7 +3,7 @@ export type Lang = 'id' | 'en';
 export type ReservationType = 'table' | 'dinner_package';
 export type PackageCode = 'ume' | 'take' | 'matsu';
 export type ReservationStatus = 'pending' | 'confirmed' | 'seated' | 'completed' | 'cancelled' | 'no_show';
-export type PaymentStatus = 'none' | 'pending' | 'paid_simulated';
+export type PaymentStatus = 'none' | 'pending' | 'paid' | 'paid_simulated';
 
 export interface Reservation {
   id: string;
@@ -125,6 +125,12 @@ export interface RsvpInput {
   consent: boolean;
 }
 
+/** RSVP lewat link undangan umum: tamu menulis nama dan grupnya sendiri. */
+export interface OpenRsvpInput extends RsvpInput {
+  name: string;
+  groupLabel: string;
+}
+
 export interface AdminUser {
   email: string;
   role: 'owner' | 'staff' | 'usher';
@@ -139,8 +145,14 @@ export interface Api {
   createWeddingInquiry(input: NewWeddingInquiry): Promise<{ code: string }>;
   getInvitation(slug: string, token: string): Promise<InvitationView | null>;
   submitRsvp(token: string, input: RsvpInput): Promise<InvitationView>;
+  /** Data acara untuk link undangan umum (tanpa token tamu). */
+  getWeddingPreview(slug: string): Promise<InvitationView['wedding'] | null>;
+  /** Tamu mendaftar sendiri lewat link undangan umum. Mengembalikan undangan pribadinya, lengkap dengan token. */
+  submitOpenRsvp(slug: string, input: OpenRsvpInput): Promise<InvitationView>;
   /** Simulasi pembayaran QRIS paket dinner. Tidak ada uang yang ditarik. */
   simulatePayment(code: string, phone: string): Promise<void>;
+  /** Pelanggan wedding mengisi daftar tamunya sendiri. Dikunci dengan kode wedding + nomor WhatsApp pemesan. */
+  submitGuestList(code: string, phone: string, rows: NewGuest[]): Promise<number>;
   admin: {
     session(): Promise<AdminUser | null>;
     signIn(email: string, password: string): Promise<AdminUser>;
@@ -149,6 +161,8 @@ export interface Api {
     guests(weddingId: string): Promise<Guest[]>;
     reservations(): Promise<Reservation[]>;
     setReservationStatus(id: string, status: ReservationStatus): Promise<void>;
+    /** Admin menandai paket dinner sudah dibayar. Reservasi yang masih menunggu ikut terkonfirmasi. */
+    confirmPayment(id: string): Promise<void>;
     setWeddingStatus(id: string, status: WeddingStatus): Promise<void>;
     addGuests(weddingId: string, rows: NewGuest[]): Promise<number>;
     updateGuest(id: string, patch: GuestPatch): Promise<void>;

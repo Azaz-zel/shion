@@ -43,6 +43,8 @@
 .inv__pax output { min-width: 28px; text-align: center; font-family: var(--font-2); font-size: 28px; }
 .inv__input { width: 100%; min-height: 48px; padding: 10px 12px; border: 1px solid color-mix(in oklab, var(--color-2) 45%, transparent); background: #fbf6f1; font: inherit; color: inherit; box-sizing: border-box; }
 .inv__input:focus-visible { outline: 2px solid var(--color-4); outline-offset: 1px; }
+.inv__input::placeholder { color: color-mix(in oklab, var(--color-2) 70%, transparent); opacity: 1; }
+.inv p, .inv dd { text-wrap: pretty; }
 .inv__consent { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; margin-top: 14px; font-size: 14px; line-height: 1.5; cursor: pointer; }
 .inv__consent input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--color-4); }
 .inv__error { padding: 10px 12px; border: 1px solid var(--color-4); color: var(--color-4); font-size: 15px; }

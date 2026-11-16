@@ -179,7 +179,9 @@ export function useHomeMotion(deps: unknown[]) {
       };
       on('wheel', (event) => {
         const menuOpen = document.getElementById('menu')?.hidden === false;
-        if (menuOpen || event.ctrlKey || Math.abs(event.deltaX) > Math.abs(event.deltaY) || scrollsInside(event.target as Element, event.deltaY)) return;
+        // Daftar dropdown yang terbuka bergulir sendiri; kotaknya bukan leluhur DOM, jadi scrollsInside tidak melihatnya.
+        const inPicker = !!(event.target as Element).closest?.('select');
+        if (menuOpen || inPicker || event.ctrlKey || Math.abs(event.deltaX) > Math.abs(event.deltaY) || scrollsInside(event.target as Element, event.deltaY)) return;
         event.preventDefault();
         if (!running) target = current = scrollY;
         const unit = event.deltaMode === 1 ? 40 : event.deltaMode === 2 ? innerHeight : 1;

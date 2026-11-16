@@ -1,7 +1,7 @@
 // Mode demo: semua data disimpan di localStorage browser ini, tanpa server.
 // Perubahan disiarkan ke tab lain lewat BroadcastChannel, jadi admin di satu tab
 // langsung melihat RSVP yang dikirim dari tab lain.
-import { addDaysISO, checkInquiry, checkReservation, checkRsvp, todayISO } from './validation';
+import { addDaysISO, checkGuestList, checkInquiry, checkOpenRsvp, checkReservation, checkRsvp, todayISO } from './validation';
 import {
   UserError,
   type AdminUser,
@@ -10,6 +10,7 @@ import {
   type Guest,
   type GuestBrief,
   type InvitationView,
+  type NewGuest,
   type Reservation,
   type Wedding,
 } from './types';
@@ -133,9 +134,13 @@ function newCode(prefix: string, taken: string[]): string {
   return code;
 }
 
+function weddingView(w: Wedding): InvitationView['wedding'] {
+  return { couple1: w.couple1, couple2: w.couple2, eventDate: w.eventDate, session: w.session, slug: w.slug };
+}
+
 function view(guest: Guest, wedding: Wedding): InvitationView {
   return {
-    wedding: { couple1: wedding.couple1, couple2: wedding.couple2, eventDate: wedding.eventDate, session: wedding.session, slug: wedding.slug },
+    wedding: weddingView(wedding),
     guest: {
       name: guest.name, maxPax: guest.maxPax, rsvpStatus: guest.rsvpStatus, rsvpPax: guest.rsvpPax, dietary: guest.dietary,
       dietaryNote: guest.dietaryNote, message: guest.message, token: guest.token, tableNo: guest.tableNo,
@@ -148,6 +153,16 @@ function brief(g: Guest): GuestBrief {
     id: g.id, name: g.name, groupLabel: g.groupLabel, maxPax: g.maxPax, rsvpStatus: g.rsvpStatus, rsvpPax: g.rsvpPax,
     dietary: g.dietary, dietaryNote: g.dietaryNote, tableNo: g.tableNo, checkedInAt: g.checkedInAt, checkedInPax: g.checkedInPax,
   };
+}
+
+function pushGuests(d: Db, weddingId: string, rows: NewGuest[]): void {
+  rows.forEach((r) => {
+    d.guests.push({
+      id: crypto.randomUUID(), weddingId, name: r.name.trim(), groupLabel: r.groupLabel.trim(), maxPax: r.maxPax,
+      token: crypto.randomUUID().replace(/-/g, ''), rsvpStatus: 'pending', rsvpPax: 0, dietary: [], dietaryNote: '',
+      message: '', respondedAt: null, tableNo: r.tableNo.trim(), checkedInAt: null, checkedInPax: 0,
+    });
+  });
 }
 
 function requireAdmin(roles: AdminUser['role'][] = ['owner', 'staff']): AdminUser {
@@ -225,6 +240,32 @@ export const demoApi: Api = {
     return view(guest, wedding);
   },
 
+  async getWeddingPreview(slug) {
+    await wait(150);
+    const w = db().weddings.find((x) => x.slug === slug && x.status === 'confirmed');
+    return w ? weddingView(w) : null;
+  },
+
+  async submitOpenRsvp(slug, input) {
+    checkOpenRsvp(input);
+    await wait();
+    const d = db();
+    const w = d.weddings.find((x) => x.slug === slug && x.status === 'confirmed');
+    if (!w || w.eventDate < todayISO()) throw new UserError('RSVP untuk acara ini sudah ditutup.');
+    if (d.guests.filter((g) => g.weddingId === w.id).length >= 500) throw new UserError('Daftar tamu sudah penuh. Hubungi mempelai.');
+    const attending = input.status === 'attending';
+    // maxPax mengikuti jumlah yang ditulis tamu, supaya "kursi maksimal" di admin tetap jujur.
+    const guest: Guest = {
+      id: crypto.randomUUID(), weddingId: w.id, name: input.name.trim(), groupLabel: input.groupLabel.trim(), maxPax: attending ? input.pax : 1,
+      token: crypto.randomUUID().replace(/-/g, ''), rsvpStatus: input.status, rsvpPax: attending ? input.pax : 0,
+      dietary: attending ? input.dietary : [], dietaryNote: attending ? input.dietaryNote.trim() : '', message: input.message.trim(),
+      respondedAt: new Date().toISOString(), tableNo: '', checkedInAt: null, checkedInPax: 0,
+    };
+    d.guests.push(guest);
+    save(d);
+    return view(guest, w);
+  },
+
   async simulatePayment(code, phone) {
     await wait(400);
     const d = db();
@@ -233,6 +274,18 @@ export const demoApi: Api = {
     r.paymentStatus = 'paid_simulated';
     if (r.status === 'pending') r.status = 'confirmed';
     save(d);
+  },
+
+  async submitGuestList(code, phone, rows) {
+    checkGuestList(rows);
+    await wait();
+    const d = db();
+    const w = d.weddings.find((x) => x.code === code.trim().toUpperCase() && x.phone === phone.trim() && x.status === 'confirmed');
+    if (!w) throw new UserError('Kode wedding dan nomor WhatsApp tidak cocok, atau wedding belum dikonfirmasi.');
+    if (d.guests.filter((g) => g.weddingId === w.id).length + rows.length > 500) throw new UserError('Daftar tamu sudah penuh. Hubungi kami lewat WhatsApp.');
+    pushGuests(d, w.id, rows.map((r) => ({ ...r, tableNo: '' })));
+    save(d);
+    return rows.length;
   },
 
   admin: {
@@ -286,6 +339,16 @@ export const demoApi: Api = {
       r.status = status;
       save(d);
     },
+    async confirmPayment(id) {
+      requireAdmin();
+      const d = db();
+      const r = d.reservations.find((x) => x.id === id);
+      if (!r) throw new UserError('Reservasi tidak ditemukan.');
+      if (r.paymentStatus !== 'pending') throw new UserError('Reservasi ini tidak sedang menunggu pembayaran.');
+      r.paymentStatus = 'paid';
+      if (r.status === 'pending') r.status = 'confirmed';
+      save(d);
+    },
     async setWeddingStatus(id, status) {
       requireAdmin();
       const d = db();
@@ -301,13 +364,7 @@ export const demoApi: Api = {
       requireAdmin();
       const d = db();
       if (!d.weddings.some((w) => w.id === weddingId)) throw new UserError('Wedding tidak ditemukan.');
-      rows.forEach((r) => {
-        d.guests.push({
-          id: crypto.randomUUID(), weddingId, name: r.name.trim(), groupLabel: r.groupLabel.trim(), maxPax: r.maxPax,
-          token: crypto.randomUUID().replace(/-/g, ''), rsvpStatus: 'pending', rsvpPax: 0, dietary: [], dietaryNote: '',
-          message: '', respondedAt: null, tableNo: r.tableNo.trim(), checkedInAt: null, checkedInPax: 0,
-        });
-      });
+      pushGuests(d, weddingId, rows);
       save(d);
       return rows.length;
     },

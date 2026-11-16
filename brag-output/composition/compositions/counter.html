@@ -1,0 +1,45 @@
+<template>
+  <style>
+    @font-face { font-family: 'TikTok Sans'; src: url('assets/fonts/tiktok-sans.woff2') format('woff2'); font-weight: 400 900; font-stretch: 100% 125%; }
+    @font-face { font-family: 'Brygada 1918'; src: url('assets/fonts/brygada-1918.woff2') format('woff2'); font-weight: 400 600; }
+    @font-face { font-family: 'Yuji Syuku'; src: url('assets/fonts/yuji-syuku-subset.woff2') format('woff2'); }
+
+    #root { position: absolute; inset: 0; overflow: hidden; color: #f0e2d8; font-family: 'TikTok Sans', sans-serif; }
+    #root * { box-sizing: border-box; margin: 0; padding: 0; }
+    .serif { font-family: 'Brygada 1918', serif; }
+    .kanji { font-family: 'Yuji Syuku', serif; }
+    .wide { font-weight: 900; font-stretch: 125%; text-transform: uppercase; letter-spacing: -0.02em; }
+    .w { display: inline-block; }
+
+    #root { background: #2a1a2b; }
+    #counter-photo { position: absolute; inset: 0; }
+    #counter-photo img { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; object-fit: cover; object-position: 64% 50%; }
+    #counter-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(42,26,43,.55) 0%, rgba(42,26,43,0) 22%, rgba(42,26,43,0) 42%, rgba(42,26,43,.86) 62%, #2a1a2b 100%); }
+    #counter-name { position: absolute; top: 960px; left: 0; right: 0; text-align: center; font-size: 236px; line-height: .9; }
+    #counter-name span { display: inline-block; }
+    #counter-tag { position: absolute; top: 1190px; left: 0; right: 0; text-align: center; font-size: 40px; text-transform: uppercase; letter-spacing: .04em; }
+    #counter-flood { position: absolute; inset: 0; background: #2a1a2b; opacity: 0; }
+
+  </style>
+  <div id="root" data-composition-id="counter" data-width="1080" data-height="1920">
+    <div id="counter-photo" data-layout-allow-overflow><img id="counter-img" src="assets/img/hero.jpg" alt="Tangan chef menata nigiri uni dan tuna di atas papan kayu"></div>
+    <div id="counter-shade" data-layout-ignore></div>
+    <p id="counter-name" class="wide"><span id="counter-l0">S</span><span id="counter-l1">H</span><span id="counter-l2">I</span><span id="counter-l3">O</span><span id="counter-l4">N</span></p>
+    <p id="counter-tag" class="serif">Kaiseki &amp; omakase · Jakarta Selatan</p>
+    <div id="counter-flood" data-layout-ignore></div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+
+    tl.fromTo('#counter-photo', { opacity: 0 }, { opacity: 1, duration: .5, ease: 'power2.out' }, 0);
+    tl.fromTo('#counter-img', { scale: 1.0 }, { scale: 1.08, duration: 4.0, ease: 'power1.inOut' }, 0); // slow push-in on the food
+    [0, 1, 2, 3, 4].forEach((i) => {
+      tl.fromTo('#counter-l' + i, { opacity: .3, filter: 'blur(4px)' }, { opacity: 1, filter: 'blur(0px)', duration: .22, ease: 'power4.out' }, .55 + i * .1);
+    });
+    tl.fromTo('#counter-tag', { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: .2, ease: 'power4.out' }, 1.35);
+    // Colour flood to the evening: the ground turns aubergine under the next title.
+    tl.fromTo('#counter-flood', { opacity: 0 }, { opacity: 1, duration: .4, ease: 'power2.inOut' }, 3.6);
+
+    window.__timelines["counter"] = tl;
+  </script>
+</template>

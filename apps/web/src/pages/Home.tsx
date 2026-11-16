@@ -10,9 +10,12 @@ import { useHomeMotion } from '../hooks/useHomeMotion';
 
 type Preset = 'table' | PackageCode | 'wedding';
 
+const ArrowGlyph = () => (
+  <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2 8h11M9 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.6" /></svg>
+);
 const Arrow = () => (
   <span className="m-icon" aria-hidden="true">
-    <svg viewBox="0 0 16 16" width="14" height="14"><path d="M2 8h11M9 4l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.6" /></svg>
+    <ArrowGlyph />
   </span>
 );
 
@@ -108,7 +111,7 @@ function Opening({ t, onPreset }: { t: HomeCopy; onPreset: (p: Preset) => void }
           </div>
         </div>
         <figure className="op__photo">
-          <div className="op__drift"><img src="/img/hero.jpg" width={1024} height={680} alt={t.hero.alt} fetchPriority="high" /></div>
+          <div className="op__drift"><img src="/img/hero.jpg" width={1024} height={680} alt={t.hero.alt} {...{ fetchpriority: 'high' }} /></div>
         </figure>
       </div>
       <div className="op__night">
@@ -224,7 +227,7 @@ function Standing({ t, onPreset }: { t: HomeCopy; onPreset: (p: Preset) => void 
             <p className="so__what m-text">{r.what}</p>
             <p className="m-text-8">{r.when}</p>
             <p className="so__price">{r.price}</p>
-            <a className="m-link" href="#contact" onClick={() => onPreset(r.code as PackageCode)}>{r.cta}</a>
+            <a className="m-btn-3" href="#contact" onClick={() => onPreset(r.code as PackageCode)}>{r.cta}<ArrowGlyph /></a>
           </li>
         ))}
       </ul>

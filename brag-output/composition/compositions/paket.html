@@ -1,0 +1,68 @@
+<template>
+  <style>
+    @font-face { font-family: 'TikTok Sans'; src: url('assets/fonts/tiktok-sans.woff2') format('woff2'); font-weight: 400 900; font-stretch: 100% 125%; }
+    @font-face { font-family: 'Brygada 1918'; src: url('assets/fonts/brygada-1918.woff2') format('woff2'); font-weight: 400 600; }
+    @font-face { font-family: 'Yuji Syuku'; src: url('assets/fonts/yuji-syuku-subset.woff2') format('woff2'); }
+
+    #root { position: absolute; inset: 0; overflow: hidden; color: #f0e2d8; font-family: 'TikTok Sans', sans-serif; }
+    #root * { box-sizing: border-box; margin: 0; padding: 0; }
+    .serif { font-family: 'Brygada 1918', serif; }
+    .kanji { font-family: 'Yuji Syuku', serif; }
+    .wide { font-weight: 900; font-stretch: 125%; text-transform: uppercase; letter-spacing: -0.02em; }
+    .w { display: inline-block; }
+
+    #root { background: #f0e2d8; color: #2a1a2b; }
+    #paket-title { position: absolute; top: 210px; left: 70px; right: 70px; font-size: 96px; line-height: .98; text-transform: uppercase; }
+    #paket-rows { position: absolute; top: 470px; left: 70px; right: 70px; list-style: none; }
+    #paket-rows li { display: flex; justify-content: space-between; align-items: center; gap: 24px; height: 196px; border-top: 1.5px solid #2a1a2b; opacity: 0; }
+    #paket-rows .nm { font-size: 60px; line-height: 1; text-transform: uppercase; }
+    #paket-rows .nm .kanji { color: #6e3b9e; }
+    #paket-rows .ds { margin-top: 12px; font-size: 30px; opacity: .78; }
+    #paket-rows .pr { margin-top: 8px; font-size: 36px; text-transform: uppercase; }
+    .btn { position: relative; display: inline-flex; align-items: center; height: 76px; padding: 0 26px; border: 1.5px solid #2a1a2b; overflow: hidden; }
+    .btn .fill { position: absolute; inset: 0; background: #2a1a2b; clip-path: ellipse(40% 0% at 50% 100%); }
+    .btn .lbl { position: relative; display: inline-flex; align-items: center; gap: 12px; font-size: 32px; font-weight: 500; white-space: nowrap; }
+    #paket-ok { position: absolute; top: 1110px; left: 70px; right: 70px; height: 120px; display: flex; align-items: center; gap: 24px; padding: 0 34px; background: #2a1a2b; color: #f0e2d8; opacity: 0; }
+    #paket-ok .chk { flex: none; width: 54px; height: 54px; border-radius: 50%; background: #b78cf2; display: grid; place-items: center; }
+    #paket-ok p { font-size: 36px; font-weight: 500; }
+    #paket-ok p span { color: #b78cf2; }
+
+  </style>
+  <div id="root" data-composition-id="paket" data-width="1080" data-height="1920">
+    <h2 id="paket-title" class="serif">Tiga perjalanan rasa</h2>
+    <ul id="paket-rows">
+      <li id="paket-r0">
+        <div class="l"><p class="serif nm">UME <span class="kanji" lang="ja">梅</span></p><p class="ds">6 course · siang &amp; malam</p><p class="serif pr">Rp 750.000 / orang</p></div>
+        <span class="btn" id="paket-b0"><span class="fill" id="paket-f0"></span><span class="lbl" id="paket-t0">Pesan Ume <svg width="22" height="22" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8h11M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></span></span>
+      </li>
+      <li id="paket-r1">
+        <div class="l"><p class="serif nm">TAKE <span class="kanji" lang="ja">竹</span></p><p class="ds">8 course · makan malam</p><p class="serif pr">Rp 1.150.000 / orang</p></div>
+        <span class="btn" id="paket-b1"><span class="fill" id="paket-f1"></span><span class="lbl" id="paket-t1">Pesan Take <svg width="22" height="22" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8h11M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></span></span>
+      </li>
+      <li id="paket-r2">
+        <div class="l"><p class="serif nm">MATSU <span class="kanji" lang="ja">松</span></p><p class="ds">10 course · counter hinoki</p><p class="serif pr">Rp 1.850.000 / orang</p></div>
+        <span class="btn" id="paket-b2"><span class="fill" id="paket-f2"></span><span class="lbl" id="paket-t2">Pesan Matsu <svg width="22" height="22" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8h11M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></span></span>
+      </li>
+    </ul>
+    <div id="paket-ok"><span class="chk"><svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5L20 7" fill="none" stroke="#2a1a2b" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><p>Reservasi <span>SHN-4821</span> terkonfirmasi</p></div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+
+    tl.fromTo('#paket-title', { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: .2, ease: 'power4.out' }, .11); // beat-locked: 13.11s
+    // Rows arrive quickly, then the full set holds before the tap.
+    [0, 1, 2].forEach((i) => {
+      tl.fromTo('#paket-r' + i, { opacity: 0, y: 34 }, { opacity: 1, y: 0, duration: .5, ease: 'expo.out' }, .45 + i * .35);
+    });
+    tl.set('#paket-b2', { scale: 1 }, 0);
+    // Tap on "Pesan Matsu": a short press, then the site's fill rises from the bottom.
+    tl.fromTo('#paket-b2', { scale: 1 }, { scale: .96, duration: .1, ease: 'power2.in' }, 2.4);
+    tl.fromTo('#paket-b2', { scale: .96 }, { scale: 1, duration: .25, ease: 'expo.out' }, 2.5);
+    tl.fromTo('#paket-f2', { clipPath: 'ellipse(40% 0% at 50% 100%)' }, { clipPath: 'ellipse(90% 150% at 50% 100%)', duration: .45, ease: 'power3.out' }, 2.42);
+    tl.fromTo('#paket-t2', { color: '#2a1a2b' }, { color: '#f0e2d8', duration: .2, ease: 'power2.out' }, 2.5);
+    tl.fromTo('#paket-ok', { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: .45, ease: 'expo.out' }, 2.78);
+    tl.fromTo('#paket-title, #paket-rows, #paket-ok', { opacity: 1 }, { opacity: 0, filter: 'blur(8px)', duration: .2, ease: 'power3.in', immediateRender: false }, 4.4);
+
+    window.__timelines["paket"] = tl;
+  </script>
+</template>

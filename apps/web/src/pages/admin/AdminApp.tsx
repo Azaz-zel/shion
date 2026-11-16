@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { brand } from '../../config/brand';
 import { api, errorText } from '../../lib/api';
@@ -8,7 +8,34 @@ import RsvpPage from './RsvpPage';
 import ReservationsPage from './ReservationsPage';
 import WeddingsPage from './WeddingsPage';
 import CheckinPage from './CheckinPage';
+import DashboardPage from './DashboardPage';
 import '../../styles/admin.css';
+
+// Ikon garis 24px digambar sendiri supaya tidak menambah dependensi.
+const ICON = {
+  dash: 'M4 4h7v7H4zM13 4h7v4h-7zM13 11h7v9h-7zM4 14h7v6H4z',
+  book: 'M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z',
+  heart: 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z',
+  users: 'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20a6.5 6.5 0 0 1 13 0M16 4.3a3.5 3.5 0 0 1 0 6.4M17.5 14a6.5 6.5 0 0 1 4 6',
+  scan: 'M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16',
+  reset: 'M4 12a8 8 0 1 0 2.6-5.9M4 4v5h5',
+  out: 'M10 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h5M15 8l4 4-4 4M19 12H9',
+};
+const NAV = [
+  { to: 'dashboard', label: 'Dashboard', icon: ICON.dash },
+  { to: 'reservasi', label: 'Reservasi', icon: ICON.book },
+  { to: 'wedding', label: 'Wedding', icon: ICON.heart },
+  { to: 'rsvp', label: 'Tamu undangan', icon: ICON.users },
+  { to: 'checkin', label: 'Check-in', icon: ICON.scan },
+];
+
+function Icon({ d }: { d: string }) {
+  return <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>;
+}
+
+function Tip({ children }: { children: ReactNode }) {
+  return <span className="ad-rail__tip" aria-hidden="true">{children}</span>;
+}
 
 function Login({ onIn }: { onIn: (u: AdminUser) => void }) {
   const [email, setEmail] = useState('');
@@ -59,36 +86,37 @@ export default function AdminApp() {
   }, []);
 
   if (user === undefined) return <main className="ad-login"><p role="status">Memuat…</p></main>;
-  const home = (u: AdminUser) => (u.role === 'usher' ? '/admin/checkin' : '/admin/rsvp');
+  const home = (u: AdminUser) => (u.role === 'usher' ? '/admin/checkin' : '/admin/dashboard');
   if (!user) return <Login onIn={(u) => { setUser(u); if (u.role === 'usher' || location.pathname === '/admin' || location.pathname === '/admin/') navigate(home(u)); }} />;
   const staff = user.role !== 'usher';
 
   return (
     <div className="ad">
-      <header className="ad-top">
-        <a className="ad-brand" href="/">{brand.name} <span lang="ja">{brand.kanji}</span></a>
-        <nav className="ad-tabs" aria-label="Admin">
-          {staff && <NavLink to="/admin/rsvp">RSVP tamu</NavLink>}
-          {staff && <NavLink to="/admin/reservasi">Reservasi</NavLink>}
-          {staff && <NavLink to="/admin/wedding">Wedding</NavLink>}
-          <NavLink to="/admin/checkin">Check-in</NavLink>
+      <header className="ad-rail">
+        <a className="ad-rail__brand" href="/" lang="ja" aria-label={`${brand.name}, ke situs`}>{brand.kanji}</a>
+        <nav aria-label="Admin">
+          {NAV.filter((n) => staff || n.to === 'checkin').map((n) => (
+            <NavLink key={n.to} to={`/admin/${n.to}`} aria-label={n.label}><Icon d={n.icon} /><Tip>{n.label}</Tip></NavLink>
+          ))}
         </nav>
-        <div className="ad-user">
+        <div className="ad-rail__end">
           {api.mode === 'demo' && staff && (
-            <button type="button" className="ad-link" onClick={() => { resetDemo(); }}>Reset data demo</button>
+            <button type="button" aria-label="Reset data demo" onClick={() => { resetDemo(); }}><Icon d={ICON.reset} /><Tip>Reset data demo</Tip></button>
           )}
-          <span className="ad-muted">{user.email}</span>
-          <button type="button" className="ad-link" onClick={async () => { await api.admin.signOut(); setUser(null); }}>Keluar</button>
+          <button type="button" aria-label={`Keluar (${user.email})`} onClick={async () => { await api.admin.signOut(); setUser(null); }}><Icon d={ICON.out} /><Tip>Keluar · {user.email}</Tip></button>
         </div>
       </header>
-      {api.mode === 'demo' && staff && <p className="ad-banner">Mode demo: data contoh tersimpan di browser ini. Buka undangan contoh di tab lain, kirim RSVP, dan lihat daftar di sini ikut berubah.</p>}
-      <Routes>
-        {staff && <Route path="rsvp" element={<RsvpPage />} />}
-        {staff && <Route path="reservasi" element={<ReservationsPage />} />}
-        {staff && <Route path="wedding" element={<WeddingsPage />} />}
-        <Route path="checkin" element={<CheckinPage />} />
-        <Route path="*" element={<Navigate to={home(user)} replace />} />
-      </Routes>
+      <div className="ad-body">
+        {api.mode === 'demo' && staff && <p className="ad-banner">Mode demo: data contoh tersimpan di browser ini. Buka undangan contoh di tab lain, kirim RSVP, dan lihat daftar di sini ikut berubah.</p>}
+        <Routes>
+          {staff && <Route path="dashboard" element={<DashboardPage email={user.email} />} />}
+          {staff && <Route path="rsvp" element={<RsvpPage />} />}
+          {staff && <Route path="reservasi" element={<ReservationsPage />} />}
+          {staff && <Route path="wedding" element={<WeddingsPage />} />}
+          <Route path="checkin" element={<CheckinPage />} />
+          <Route path="*" element={<Navigate to={home(user)} replace />} />
+        </Routes>
+      </div>
     </div>
   );
 }

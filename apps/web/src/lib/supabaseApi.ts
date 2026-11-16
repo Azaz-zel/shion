@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { checkInquiry, checkReservation, checkRsvp } from './validation';
+import { checkGuestList, checkInquiry, checkOpenRsvp, checkReservation, checkRsvp } from './validation';
 import {
   UserError,
   type AdminUser,
@@ -93,9 +93,35 @@ export function makeSupabaseApi(url: string, anonKey: string): Api {
       return data as InvitationView;
     },
 
+    async getWeddingPreview(slug) {
+      const { data, error } = await sb.rpc('get_wedding_preview', { p_slug: slug });
+      if (error) fail(error);
+      return data ? { ...(data as Omit<InvitationView['wedding'], 'slug'>), slug } : null;
+    },
+
+    async submitOpenRsvp(slug, input) {
+      checkOpenRsvp(input);
+      const { data, error } = await sb.rpc('submit_open_rsvp', {
+        p_slug: slug, p_name: input.name.trim(), p_group: input.groupLabel.trim(), p_status: input.status, p_pax: input.pax,
+        p_dietary: input.dietary, p_note: input.dietaryNote, p_message: input.message, p_consent: input.consent,
+      });
+      if (error) fail(error);
+      return data as InvitationView;
+    },
+
     async simulatePayment(code, phone) {
       const { error } = await sb.rpc('simulate_payment', { p_code: code, p_phone: phone.trim() });
       if (error) fail(error);
+    },
+
+    async submitGuestList(code, phone, rows) {
+      checkGuestList(rows);
+      const { data, error } = await sb.rpc('submit_guest_list', {
+        p_code: code.trim().toUpperCase(), p_phone: phone.trim(),
+        p_rows: rows.map((r) => ({ name: r.name.trim(), group: r.groupLabel.trim(), max_pax: r.maxPax })),
+      });
+      if (error) fail(error);
+      return Number(data);
     },
 
     admin: {
@@ -131,6 +157,13 @@ export function makeSupabaseApi(url: string, anonKey: string): Api {
       async setReservationStatus(id, status) {
         const { error } = await sb.from('reservations').update({ status }).eq('id', id);
         if (error) fail(error);
+      },
+      async confirmPayment(id) {
+        const paid = await sb.from('reservations').update({ payment_status: 'paid' }).eq('id', id).eq('payment_status', 'pending');
+        if (paid.error) fail(paid.error);
+        // Sama seperti simulate_payment: reservasi yang sudah dibayar ikut terkonfirmasi.
+        const confirmed = await sb.from('reservations').update({ status: 'confirmed' }).eq('id', id).eq('status', 'pending');
+        if (confirmed.error) fail(confirmed.error);
       },
       async setWeddingStatus(id, status) {
         const { error } = await sb.from('weddings').update({ status }).eq('id', id);

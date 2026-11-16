@@ -3,44 +3,57 @@ import { api, errorText } from '../../lib/api';
 import { formatDate } from '../../i18n/lang';
 import { todayISO } from '../../lib/validation';
 import type { Reservation, ReservationStatus } from '../../lib/types';
-import { relativeTime, useLive } from './useLive';
+import { relativeTime, reservationChat, useLive } from './useLive';
 
-const STATUS: Array<[ReservationStatus, string]> = [
+export const STATUS: Array<[ReservationStatus, string]> = [
   ['pending', 'Menunggu'], ['confirmed', 'Terkonfirmasi'], ['seated', 'Sedang bersantap'],
   ['completed', 'Selesai'], ['cancelled', 'Dibatalkan'], ['no_show', 'Tidak datang'],
 ];
 const PKG: Record<string, string> = { ume: 'Paket Ume', take: 'Paket Take', matsu: 'Paket Matsu' };
-const PAY: Record<Reservation['paymentStatus'], string> = { none: '', pending: 'belum bayar', paid_simulated: 'lunas (demo)' };
+const PAY: Record<Reservation['paymentStatus'], string> = { none: '', pending: 'belum bayar', paid: 'lunas', paid_simulated: 'lunas (demo)' };
 
 function Row({ r }: { r: Reservation }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  async function run(action: () => Promise<void>) {
+    setBusy(true);
+    setError('');
+    try {
+      await action();
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <tr>
-      <td className="ad-num">{r.time.replace(':', '.')}</td>
-      <td><strong>{r.guestName}</strong><br /><span className="ad-muted ad-small">{r.code} · {r.phone}</span></td>
-      <td>{r.type === 'table' ? 'Meja à la carte' : PKG[r.packageCode ?? '']}{PAY[r.paymentStatus] && <><br /><span className="ad-muted ad-small">{PAY[r.paymentStatus]}</span></>}</td>
-      <td className="ad-num">{r.pax}</td>
-      <td className="ad-msg">{r.notes || <span className="ad-muted">–</span>}</td>
+      <td><strong className="ad-time ad-num">{r.time.replace(':', '.')}</strong></td>
+      <td><strong>{r.guestName}</strong><br /><span className="ad-muted ad-small">{r.code} · {r.phone} · masuk {relativeTime(r.createdAt)}</span></td>
+      <td data-label="Jenis">
+        {r.type === 'table' ? 'Meja à la carte' : PKG[r.packageCode ?? '']}
+        {PAY[r.paymentStatus] && (
+          <div className="ad-actions ad-pay">
+            <span className={`ad-pill ad-pill--${r.paymentStatus === 'pending' ? 'due' : 'confirmed'}`}>{PAY[r.paymentStatus]}</span>
+            {r.paymentStatus === 'pending' && (
+              <button type="button" className="ad-link" aria-label={`Tandai lunas ${r.guestName}`} disabled={busy} onClick={() => run(() => api.admin.confirmPayment(r.id))}>Tandai lunas</button>
+            )}
+          </div>
+        )}
+      </td>
+      <td className="ad-num" data-label="Orang">{r.pax}</td>
+      <td className="ad-msg" data-label="Catatan">{r.notes || <span className="ad-muted ad-dash">–</span>}</td>
       <td>
+        <div className="ad-actions">
         <label className="sr-only" htmlFor={`st-${r.id}`}>Status {r.code}</label>
         <select id={`st-${r.id}`} className={`ad-status ad-status--${r.status}`} value={r.status} disabled={busy}
-          onChange={async (e) => {
-            setBusy(true);
-            setError('');
-            try {
-              await api.admin.setReservationStatus(r.id, e.target.value as ReservationStatus);
-            } catch (err) {
-              setError(errorText(err));
-            } finally {
-              setBusy(false);
-            }
-          }}>
+          onChange={(e) => run(() => api.admin.setReservationStatus(r.id, e.target.value as ReservationStatus))}>
           {STATUS.map(([s, label]) => <option key={s} value={s}>{label}</option>)}
         </select>
+        <a className="ad-link" aria-label={`WhatsApp ${r.guestName}`} href={reservationChat(r)} target="_blank" rel="noreferrer">WhatsApp</a>
+        </div>
         {error && <p className="ad-error ad-small" role="alert">{error}</p>}
       </td>
-      <td className="ad-small ad-muted">{relativeTime(r.createdAt)}</td>
     </tr>
   );
 }
@@ -85,8 +98,8 @@ export default function ReservationsPage() {
         <section key={date} className="ad-day" aria-label={formatDate(date, 'id')}>
           <h2>{date === today ? 'Hari ini · ' : ''}{formatDate(date, 'id')} <span className="ad-muted">{rows.length} reservasi · {rows.filter((r) => r.status !== 'cancelled').reduce((n, r) => n + r.pax, 0)} orang</span></h2>
           <div className="ad-tablewrap">
-            <table className="ad-table">
-              <thead><tr><th scope="col">Jam</th><th scope="col">Pemesan</th><th scope="col">Jenis</th><th scope="col">Orang</th><th scope="col">Catatan</th><th scope="col">Status</th><th scope="col">Masuk</th></tr></thead>
+            <table className="ad-table ad-table--res">
+              <thead><tr><th scope="col">Jam</th><th scope="col">Pemesan</th><th scope="col">Jenis</th><th scope="col">Orang</th><th scope="col">Catatan</th><th scope="col">Status & kontak</th></tr></thead>
               <tbody>{rows.map((r) => <Row key={r.id} r={r} />)}</tbody>
             </table>
           </div>

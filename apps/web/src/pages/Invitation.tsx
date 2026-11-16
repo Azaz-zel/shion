@@ -4,12 +4,32 @@ import QRCode from 'qrcode';
 import { coupleStory, inviteCopy } from '../content/invitation';
 import { brand } from '../config/brand';
 import { api, errorText } from '../lib/api';
-import { todayISO } from '../lib/validation';
+import { OPEN_RSVP_MAX_PAX, todayISO } from '../lib/validation';
 import type { DietCode, InvitationView } from '../lib/types';
 import { formatDate, LangToggle, useLang } from '../i18n/lang';
 import '../styles/invite.css';
 
 const DIETS: DietCode[] = ['no_pork', 'no_alcohol', 'vegetarian', 'no_raw'];
+
+/** Undangan pribadi punya data tamu; undangan umum (tanpa token) belum, sampai tamu mendaftar sendiri. */
+type View = { wedding: InvitationView['wedding']; guest: InvitationView['guest'] | null };
+
+// Token undangan pribadi diingat per wedding, supaya tamu yang sudah mendaftar lewat link umum tidak mendaftar dua kali.
+const storeKey = (slug: string) => `shion-invite-${slug}`;
+function remembered(slug: string): string {
+  try {
+    return localStorage.getItem(storeKey(slug)) ?? '';
+  } catch {
+    return '';
+  }
+}
+function remember(slug: string, token: string): void {
+  try {
+    localStorage.setItem(storeKey(slug), token);
+  } catch {
+    /* penyimpanan diblokir: tamu tetap memegang link pribadinya di alamat halaman */
+  }
+}
 
 function daysUntil(iso: string): number {
   return Math.round((new Date(iso + 'T00:00:00').getTime() - new Date(todayISO() + 'T00:00:00').getTime()) / 86400000);
@@ -29,12 +49,14 @@ function EntryQr({ token, label }: { token: string; label: string }) {
 export default function Invitation() {
   const { slug = '' } = useParams();
   const [params] = useSearchParams();
-  const token = params.get('t') ?? '';
+  const urlToken = params.get('t') ?? '';
   const { lang } = useLang();
   const t = inviteCopy[lang];
 
-  const [load, setLoad] = useState<{ state: 'loading' | 'ready' | 'missing' | 'error'; data: InvitationView | null }>({ state: 'loading', data: null });
+  const [load, setLoad] = useState<{ state: 'loading' | 'ready' | 'missing' | 'error'; data: View | null }>({ state: 'loading', data: null });
   const [editing, setEditing] = useState(false);
+  const [name, setName] = useState('');
+  const [group, setGroup] = useState('');
   const [choice, setChoice] = useState<'attending' | 'declined'>('attending');
   const [pax, setPax] = useState(1);
   const [diet, setDiet] = useState<DietCode[]>([]);
@@ -43,33 +65,40 @@ export default function Invitation() {
   const [consent, setConsent] = useState(false);
   const [send, setSend] = useState<{ busy: boolean; error: string }>({ busy: false, error: '' });
 
-  const fill = (v: InvitationView) => {
-    setChoice(v.guest.rsvpStatus === 'declined' ? 'declined' : 'attending');
-    setPax(Math.max(1, v.guest.rsvpPax || v.guest.maxPax));
-    setDiet(v.guest.dietary);
-    setNote(v.guest.dietaryNote);
-    setMessage(v.guest.message);
+  const fill = (g: InvitationView['guest']) => {
+    setChoice(g.rsvpStatus === 'declined' ? 'declined' : 'attending');
+    setPax(Math.max(1, g.rsvpPax || g.maxPax));
+    setDiet(g.dietary);
+    setNote(g.dietaryNote);
+    setMessage(g.message);
   };
 
   const open = useCallback(async () => {
     setLoad({ state: 'loading', data: null });
     try {
+      const token = urlToken || remembered(slug);
       const v = token ? await api.getInvitation(slug, token) : null;
-      if (!v) return setLoad({ state: 'missing', data: null });
-      fill(v);
-      setEditing(v.guest.rsvpStatus === 'pending');
-      setLoad({ state: 'ready', data: v });
+      if (v) {
+        fill(v.guest);
+        setEditing(v.guest.rsvpStatus === 'pending');
+        return setLoad({ state: 'ready', data: v });
+      }
+      // Link pribadi yang salah tetap "tidak ditemukan". Tanpa token di alamat, buka undangan umum.
+      const wedding = urlToken ? null : await api.getWeddingPreview(slug);
+      if (!wedding) return setLoad({ state: 'missing', data: null });
+      setEditing(true);
+      setLoad({ state: 'ready', data: { wedding, guest: null } });
     } catch {
       setLoad({ state: 'error', data: null });
     }
-  }, [slug, token]);
+  }, [slug, urlToken]);
 
   useEffect(() => {
     void open();
   }, [open]);
 
   useEffect(() => {
-    if (load.data) document.title = `${load.data.wedding.couple1} & ${load.data.wedding.couple2} · ${brand.name}`;
+    if (load.data) document.title = `${[load.data.wedding.couple1, load.data.wedding.couple2].filter(Boolean).join(' & ')} · ${brand.name}`;
   }, [load.data]);
 
   async function submit(e: FormEvent) {
@@ -77,7 +106,14 @@ export default function Invitation() {
     if (!load.data) return;
     setSend({ busy: true, error: '' });
     try {
-      const v = await api.submitRsvp(token, { status: choice, pax, dietary: diet, dietaryNote: note, message, consent });
+      const known = load.data.guest;
+      const input = { status: choice, pax, dietary: diet, dietaryNote: note, message, consent };
+      const v = known ? await api.submitRsvp(known.token, input) : await api.submitOpenRsvp(slug, { ...input, name, groupLabel: group });
+      if (!known) {
+        // Tamu baru: alamat halaman diganti ke link pribadinya, supaya bisa disimpan dan dibuka lagi untuk QR masuk.
+        remember(slug, v.guest.token);
+        window.history.replaceState(window.history.state, '', `?t=${encodeURIComponent(v.guest.token)}`);
+      }
       setLoad({ state: 'ready', data: v });
       setEditing(false);
       setSend({ busy: false, error: '' });
@@ -102,6 +138,7 @@ export default function Invitation() {
   const { wedding, guest } = load.data;
   const story = coupleStory(wedding.slug);
   const days = daysUntil(wedding.eventDate);
+  const maxPax = guest?.maxPax ?? OPEN_RSVP_MAX_PAX;
   const toggleDiet = (d: DietCode) => setDiet((cur) => (cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d]));
 
   return (
@@ -109,13 +146,21 @@ export default function Invitation() {
       <div className="inv__bar"><span className="inv__brand">{brand.name} <span lang="ja">{brand.kanji}</span></span><LangToggle tone="dark" /></div>
 
       <header className="inv__cover">
-        <p className="inv__dear">{t.dear}</p>
-        <p className="inv__guest">{guest.name}</p>
+        {guest && (
+          <>
+            <p className="inv__dear">{t.dear}</p>
+            <p className="inv__guest">{guest.name}</p>
+          </>
+        )}
         <h1 className="inv__names">
           <span>{wedding.couple1}</span>
-          <span className="inv__amp" aria-hidden="true">&amp;</span>
-          <span className="sr-only">{lang === 'id' ? 'dan' : 'and'}</span>
-          <span>{wedding.couple2}</span>
+          {wedding.couple2 && (
+            <>
+              <span className="inv__amp" aria-hidden="true">&amp;</span>
+              <span className="sr-only">{lang === 'id' ? 'dan' : 'and'}</span>
+              <span>{wedding.couple2}</span>
+            </>
+          )}
         </h1>
         <p className="inv__kanji" lang="ja" aria-hidden="true">結</p>
         <p className="inv__date">{formatDate(wedding.eventDate, lang)} · {t.sessionTime[wedding.session]}</p>
@@ -144,9 +189,15 @@ export default function Invitation() {
       </section>
 
       <section className="inv__block inv__rsvp" aria-labelledby="inv-rsvp">
-        {editing ? (
+        {editing || !guest ? (
           <form onSubmit={submit} noValidate>
             <h2 id="inv-rsvp">{t.rsvpT}</h2>
+            {!guest && (
+              <>
+                <label className="inv__label" htmlFor="inv-name">{t.nameT}</label>
+                <input id="inv-name" className="inv__input" type="text" autoComplete="name" maxLength={80} required placeholder={t.namePh} value={name} onChange={(e) => setName(e.target.value)} />
+              </>
+            )}
             <div className="inv__choice" role="radiogroup" aria-label={t.rsvpT}>
               {(['attending', 'declined'] as const).map((c) => (
                 <label key={c} className={choice === c ? 'is-on' : ''}>
@@ -158,12 +209,19 @@ export default function Invitation() {
 
             {choice === 'attending' && (
               <>
+                {!guest && (
+                  <>
+                    <label className="inv__label" htmlFor="inv-group">{t.groupT}</label>
+                    <input id="inv-group" className="inv__input" type="text" list="inv-groups" maxLength={40} placeholder={t.groupPh} value={group} onChange={(e) => setGroup(e.target.value)} />
+                    <datalist id="inv-groups">{t.groups.map((g) => <option key={g} value={g} />)}</datalist>
+                  </>
+                )}
                 <p className="inv__label" id="inv-pax-l">{t.paxT}</p>
                 <div className="inv__pax" aria-labelledby="inv-pax-l">
                   <button type="button" aria-label={t.less} disabled={pax <= 1} onClick={() => setPax((p) => p - 1)}>−</button>
                   <output aria-live="polite">{pax}</output>
-                  <button type="button" aria-label={t.more} disabled={pax >= guest.maxPax} onClick={() => setPax((p) => p + 1)}>+</button>
-                  <span className="inv__small">{t.max(guest.maxPax)}</span>
+                  <button type="button" aria-label={t.more} disabled={pax >= maxPax} onClick={() => setPax((p) => p + 1)}>+</button>
+                  <span className="inv__small">{t.max(maxPax)}</span>
                 </div>
                 <fieldset className="inv__diets">
                   <legend className="inv__label">{t.dietT}</legend>
@@ -197,13 +255,13 @@ export default function Invitation() {
             <EntryQr token={guest.token} label={t.qrLabel(guest.rsvpPax)} />
             <p className="inv__qrlabel">{t.qrLabel(guest.rsvpPax)}{guest.tableNo ? ` · ${t.table(guest.tableNo)}` : ''}</p>
             <p className="inv__small">{t.tip}</p>
-            <button type="button" className="inv__btn inv__btn--ghost" onClick={() => { fill(load.data!); setConsent(false); setEditing(true); }}>{t.change}</button>
+            <button type="button" className="inv__btn inv__btn--ghost" onClick={() => { fill(guest); setConsent(false); setEditing(true); }}>{t.change}</button>
           </div>
         ) : (
           <div className="inv__done" role="status">
             <h2 id="inv-rsvp">{t.thanksNo}</h2>
             <p>{t.wishes}</p>
-            <button type="button" className="inv__btn inv__btn--ghost" onClick={() => { fill(load.data!); setConsent(false); setEditing(true); }}>{t.change}</button>
+            <button type="button" className="inv__btn inv__btn--ghost" onClick={() => { fill(guest); setConsent(false); setEditing(true); }}>{t.change}</button>
           </div>
         )}
       </section>

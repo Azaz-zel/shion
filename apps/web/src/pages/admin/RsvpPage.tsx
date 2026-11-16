@@ -4,7 +4,7 @@ import { formatDate } from '../../i18n/lang';
 import { inviteCopy } from '../../content/invitation';
 import { todayISO } from '../../lib/validation';
 import type { DietCode, Guest, RsvpStatus, Wedding } from '../../lib/types';
-import { copyText, relativeTime, useLive } from './useLive';
+import { copyText, coupleName, guestFormUrl, guestListChat, openInviteUrl, relativeTime, useLive } from './useLive';
 import { GuestRowEdit, GuestTools } from './GuestTools';
 
 type Filter = 'all' | RsvpStatus;
@@ -18,14 +18,18 @@ function inviteUrl(w: Wedding, g: Guest) {
 
 function whatsappText(w: Wedding, g: Guest) {
   const date = formatDate(w.eventDate, 'id');
-  return `Halo ${g.name}, dengan bahagia kami mengundang Anda ke pernikahan kami, ${w.couple1} & ${w.couple2}, pada ${date} di Shion, Jakarta Selatan. Undangan dan RSVP: ${inviteUrl(w, g)}`;
+  return `Halo ${g.name}, dengan bahagia kami mengundang Anda ke pernikahan kami, ${coupleName(w)}, pada ${date} di Shion, Jakarta Selatan. Undangan dan RSVP: ${inviteUrl(w, g)}`;
 }
 
-function CopyButton({ text }: { text: string }) {
+function CopyButton({ text, icon }: { text: string; icon?: boolean }) {
   const [state, setState] = useState<'idle' | 'ok' | 'fail'>('idle');
+  const label = state === 'ok' ? 'Tersalin' : state === 'fail' ? 'Salin manual' : 'Salin link';
+  const tone = state === 'ok' ? ' is-ok' : state === 'fail' ? ' ad-link--danger' : '';
   return (
-    <button type="button" className="ad-link" onClick={async () => { setState((await copyText(text)) ? 'ok' : 'fail'); setTimeout(() => setState('idle'), 2000); }}>
-      {state === 'ok' ? 'Tersalin' : state === 'fail' ? 'Salin manual' : 'Salin link'}
+    <button type="button" className={icon ? `ad-link ad-ico ad-ico--copy${tone}` : 'ad-link'} title={icon ? label : undefined}
+      onClick={async () => { setState((await copyText(text)) ? 'ok' : 'fail'); setTimeout(() => setState('idle'), 2000); }}>
+      {/* role=status supaya "Tersalin" dibacakan pembaca layar. */}
+      <span className={icon ? 'sr-only' : undefined} role="status">{label}</span>
     </button>
   );
 }
@@ -122,8 +126,8 @@ export default function RsvpPage() {
   if (!wedding) {
     return (
       <main className="ad-main">
-        <h1>RSVP tamu</h1>
-        <p className="ad-muted">Belum ada wedding terkonfirmasi. Konfirmasi permintaan di tab Wedding, lalu daftar tamunya muncul di sini.</p>
+        <h1>Tamu undangan</h1>
+        <p className="ad-muted">Belum ada wedding terkonfirmasi. Konfirmasi permintaan di menu Wedding, lalu daftar tamunya muncul di sini.</p>
       </main>
     );
   }
@@ -136,14 +140,14 @@ export default function RsvpPage() {
     <main className="ad-main">
       <div className="ad-head">
         <div>
-          <h1>RSVP tamu</h1>
+          <h1>Tamu undangan</h1>
           <p className="ad-muted">
             {formatDate(wedding.eventDate, 'id')} · sesi {wedding.session === 'dinner' ? 'malam' : 'siang'} · {days >= 0 ? `${days} hari lagi` : 'sudah lewat'}
           </p>
         </div>
         <label className="ad-field ad-field--inline"><span>Wedding</span>
           <select id="ad-wedding" value={wedding.id} onChange={(e) => setPicked(e.target.value)}>
-            {eligible.map((w) => <option key={w.id} value={w.id}>{w.couple1} & {w.couple2} · {w.code}</option>)}
+            {eligible.map((w) => <option key={w.id} value={w.id}>{coupleName(w)} · {w.code}</option>)}
           </select>
         </label>
       </div>
@@ -156,6 +160,22 @@ export default function RsvpPage() {
       {guests.loading && !guests.data ? <p role="status">Memuat tamu…</p> : (
         <>
           <Summary guests={all} />
+          {wedding.status === 'confirmed' && (
+            <section className="ad-card ad-ask" aria-labelledby="ad-ask-t">
+              <div>
+                <h2 id="ad-ask-t">Link undangan</h2>
+                <p className="ad-muted">
+                  Satu link untuk semua tamu. Pelanggan membagikannya, lalu tiap tamu menulis nama, grup, dan jumlah orangnya sendiri. Jawaban langsung muncul di daftar ini, jadi tamu tidak perlu dimasukkan satu per satu.
+                </p>
+              </div>
+              <div className="ad-actions">
+                <a className="ad-pillbtn" href={guestListChat(wedding)} target="_blank" rel="noreferrer">Kirim link ke {wedding.contactName}</a>
+                <CopyButton text={openInviteUrl(wedding)} />
+                <a className="ad-link" href={openInviteUrl(wedding)} target="_blank" rel="noreferrer">Buka undangan</a>
+                <a className="ad-link" href={guestFormUrl(wedding)} target="_blank" rel="noreferrer">Form daftar tamu</a>
+              </div>
+            </section>
+          )}
           <div className="ad-grid">
             <section className="ad-guests" aria-labelledby="ad-guests-t">
               <div className="ad-toolbar">
@@ -173,34 +193,33 @@ export default function RsvpPage() {
               </div>
               <GuestTools weddingId={wedding.id} />
               {list.length === 0 ? (
-                <p className="ad-empty">{all.length === 0 ? 'Belum ada tamu untuk wedding ini. Tambahkan satu per satu atau impor dari CSV.' : 'Tidak ada tamu yang cocok dengan saringan ini.'}</p>
+                <p className="ad-empty">{all.length === 0 ? 'Belum ada tamu untuk wedding ini. Bagikan link undangan di atas, atau tambahkan tamu sendiri.' : 'Tidak ada tamu yang cocok dengan saringan ini.'}</p>
               ) : (
                 <div className="ad-tablewrap">
                   <table className="ad-table">
                     <thead>
-                      <tr><th scope="col">Tamu</th><th scope="col">Jawaban</th><th scope="col">Orang</th><th scope="col">Pantangan</th><th scope="col">Ucapan</th><th scope="col">Dijawab</th><th scope="col">Datang</th><th scope="col">Undangan</th></tr>
+                      <tr><th scope="col">Tamu</th><th scope="col">Jawaban</th><th scope="col">Orang</th><th scope="col">Pantangan</th><th scope="col">Ucapan</th><th scope="col">Datang</th><th scope="col">Undangan</th></tr>
                     </thead>
                     <tbody>
                       {list.map((g) => (
                         <Fragment key={g.id}>
                         <tr className={isNew(g) ? 'is-new' : ''}>
                           <td><strong>{g.name}</strong>{isNew(g) && <span className="ad-new">Baru</span>}<br /><span className="ad-muted ad-small">{g.groupLabel}{g.tableNo ? ` · meja ${g.tableNo}` : ''}</span></td>
-                          <td><span className={`ad-pill ad-pill--${g.rsvpStatus}`}>{STATUS_LABEL[g.rsvpStatus]}</span></td>
-                          <td className="ad-num">{g.rsvpStatus === 'attending' ? g.rsvpPax : '–'} <span className="ad-muted">/ {g.maxPax}</span></td>
-                          <td>{g.dietary.map((d) => DIET[d]).concat(g.dietaryNote ? [g.dietaryNote] : []).join(', ') || <span className="ad-muted">–</span>}</td>
-                          <td className="ad-msg">{g.message || <span className="ad-muted">–</span>}</td>
-                          <td className="ad-small">{g.respondedAt ? relativeTime(g.respondedAt) : <span className="ad-muted">belum</span>}</td>
-                          <td className="ad-small">{g.checkedInAt ? <span className="ad-pill ad-pill--attending">{g.checkedInPax} orang</span> : <span className="ad-muted">–</span>}</td>
+                          <td><span className={`ad-pill ad-pill--${g.rsvpStatus}`}>{STATUS_LABEL[g.rsvpStatus]}</span>{g.respondedAt && <><br /><span className="ad-muted ad-small">{relativeTime(g.respondedAt)}</span></>}</td>
+                          <td className="ad-num" data-label="Orang">{g.rsvpStatus === 'attending' ? g.rsvpPax : '–'} <span className="ad-muted">/ {g.maxPax}</span></td>
+                          <td data-label="Pantangan">{g.dietary.map((d) => DIET[d]).concat(g.dietaryNote ? [g.dietaryNote] : []).join(', ') || <span className="ad-muted ad-dash">–</span>}</td>
+                          <td className="ad-msg" data-label="Ucapan">{g.message || <span className="ad-muted ad-dash">–</span>}</td>
+                          <td className="ad-small" data-label="Datang">{g.checkedInAt ? <span className="ad-pill ad-pill--attending">{g.checkedInPax} orang</span> : <span className="ad-muted ad-dash">–</span>}</td>
                           <td>
                             <div className="ad-actions">
-                              <CopyButton text={inviteUrl(wedding, g)} />
-                              <a className="ad-link" href={`https://wa.me/?text=${encodeURIComponent(whatsappText(wedding, g))}`} target="_blank" rel="noreferrer">WhatsApp</a>
-                              <a className="ad-link" href={inviteUrl(wedding, g)} target="_blank" rel="noreferrer">Buka</a>
-                              <button type="button" className="ad-link" aria-expanded={editing === g.id} onClick={() => setEditing(editing === g.id ? '' : g.id)}>Ubah</button>
+                              <a className="ad-link" aria-label={`WhatsApp ${g.name}`} href={`https://wa.me/?text=${encodeURIComponent(whatsappText(wedding, g))}`} target="_blank" rel="noreferrer">WhatsApp</a>
+                              <CopyButton icon text={inviteUrl(wedding, g)} />
+                              <a className="ad-link ad-ico ad-ico--open" title="Buka undangan" aria-label={`Buka undangan ${g.name}`} href={inviteUrl(wedding, g)} target="_blank" rel="noreferrer" />
+                              <button type="button" className="ad-link ad-ico ad-ico--edit" title="Ubah tamu" aria-label={`Ubah ${g.name}`} aria-expanded={editing === g.id} onClick={() => setEditing(editing === g.id ? '' : g.id)} />
                             </div>
                           </td>
                         </tr>
-                        {editing === g.id && <tr className="ad-editrow"><td colSpan={8}><GuestRowEdit guest={g} onClose={() => setEditing('')} /></td></tr>}
+                        {editing === g.id && <tr className="ad-editrow"><td colSpan={7}><GuestRowEdit guest={g} onClose={() => setEditing('')} /></td></tr>}
                         </Fragment>
                       ))}
                     </tbody>
